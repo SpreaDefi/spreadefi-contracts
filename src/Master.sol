@@ -61,32 +61,29 @@ contract Master {
     function _createLongPosition(PositionParams memory params, address implementationAddress, ICentralRegistry.MarginType marginType_) 
         internal returns (uint256 tokenId, address proxyAddress) 
     {
-        IERC20 quoteToken = IERC20(params.quoteToken);
-        IERC20 baseToken = IERC20(params.baseToken);
+        IERC20 marginToken;
+        address quoteToken = params.quoteToken;
+        address baseToken = params.baseToken;
+        uint256 collateralAmount = params.collateralAmount;
 
         if (marginType_ == ICentralRegistry.MarginType.QUOTE) {
-            quoteToken.safeTransferFrom(msg.sender, address(this), params.collateralAmount);
-
-            (tokenId, proxyAddress) = factory.createProxy(msg.sender, implementationAddress, params.quoteToken, params.baseToken);
-
-            quoteToken.safeIncreaseAllowance(proxyAddress, params.collateralAmount);
-
-            IProxy(proxyAddress).addToPosition(params.collateralAmount, params.flashLoanAmount, params.minTokenOut, params.moneyMarketBorrowAmount);
-
+            marginToken = IERC20(quoteToken);
         } else if (marginType_ == ICentralRegistry.MarginType.BASE) {
-
-            baseToken.safeTransferFrom(msg.sender, address(this), params.collateralAmount);
-
-            (tokenId, proxyAddress) = factory.createProxy(msg.sender, implementationAddress, params.quoteToken, params.baseToken);
-
-            baseToken.safeIncreaseAllowance(proxyAddress, params.collateralAmount);
-
-            IProxy(proxyAddress).addToPosition(params.collateralAmount, params.flashLoanAmount, params.minTokenOut, params.moneyMarketBorrowAmount);
-            
+            marginToken = IERC20(baseToken);
         } else {
             revert InvalidMarginType();
         }
+
+        marginToken.safeTransferFrom(msg.sender, address(this), collateralAmount);
+
+        (tokenId, proxyAddress) = factory.createProxy(msg.sender, implementationAddress, quoteToken, baseToken);
+
+        marginToken.safeIncreaseAllowance(proxyAddress, collateralAmount);
+
+        IProxy(proxyAddress).addToPosition(collateralAmount, params.flashLoanAmount, params.minTokenOut, params.moneyMarketBorrowAmount);
     }
+
+
 
     function addToPosition(uint256 _tokenId) public {}
 
