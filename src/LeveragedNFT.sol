@@ -5,14 +5,25 @@ import "./libraries/ERC721A/ERC721A.sol";
 
 
 contract LeveragedNFT is ERC721A {
+    
+    address public factory;
 
-    constructor(string memory name_, string memory symbol_) ERC721A(name_, symbol_) {
+    mapping(uint256 => address) public tokenIdToProxy;
+
+    modifier onlyFactory() {
+        require(msg.sender == factory, "LeveragedNFT: Only factory");
+        _;
+    }
+
+    constructor(string memory name_, string memory symbol_, address _factory) ERC721A(name_, symbol_) {
+        factory = _factory;
     }
 
 
-    function mint(address to) external returns (uint256 tokenId) {
+    function mint(address _to, address _proxy) external onlyFactory returns (uint256 tokenId) {
         tokenId = _currentIndex;
-        _safeMint(to, 1);
+        tokenIdToProxy[tokenId] = _proxy;
+        _safeMint(_to, 1);
     }
     
 }

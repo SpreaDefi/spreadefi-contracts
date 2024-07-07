@@ -19,7 +19,7 @@ contract Factory {
 
         proxyAddress = address(proxy);
 
-        tokenId = leverageNFT.mint(_to);
+        tokenId = leverageNFT.mint(_to, proxyAddress);
 
         IProxy(proxyAddress).initialize(_quoteToken, _baseToken);
     }
