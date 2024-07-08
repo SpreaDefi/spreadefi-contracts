@@ -13,8 +13,12 @@ import "./interfaces/IFactory.sol";
 contract Master {
 
     error ImplementationNotFound();
-    error InvalidPositionType();
     error InvalidMarginType();
+    error InvalidTokenId();
+    error InvalidTokenOwner();
+    error ZeroAddress();
+    error ZeroAmount();
+
 
     using SafeERC20 for IERC20;
 
@@ -46,28 +50,32 @@ contract Master {
     }
 
     modifier onlyNFTOwner(uint256 tokenId) {
-        require(IERC721A(address(leverageNFT)).ownerOf(tokenId) == msg.sender, "Master: Only NFT owner");
+        if(IERC721A(address(leverageNFT)).ownerOf(tokenId) != msg.sender) revert InvalidTokenOwner();
         _;
+    }
+
+    function validatePositionParams(NewPositionParams memory params, address _implementation) internal pure {
+        if (_implementation == address(0)) revert ImplementationNotFound();
+        if (params.quoteToken == address(0)) revert ZeroAddress();
+        if (params.baseToken == address(0)) revert ZeroAddress();
+        if (params.collateralAmount == 0) revert ZeroAmount();
+        if (params.flashLoanAmount == 0) revert ZeroAmount();
+        if (params.minTokenOut == 0) revert ZeroAmount();
+        if (params.moneyMarketBorrowAmount == 0) revert ZeroAmount();
+
     }
 
     function createPosition(NewPositionParams memory params) public returns (uint256 tokenId, address proxyAddress) {
         ICentralRegistry.Implementation memory implementation_ = centralRegistry.implementations(params.implementation);
         address implementationAddress = implementation_.implementation;
-        ICentralRegistry.PositionType positionType_ = implementation_.positionType;
+        validatePositionParams(params, implementationAddress);
         ICentralRegistry.MarginType marginType_ = implementation_.marginType;
 
-        if (implementationAddress == address(0)) revert ImplementationNotFound();
-
-        if (positionType_ == ICentralRegistry.PositionType.LONG) {  
-            (tokenId, proxyAddress) = _createLongPosition(params, implementationAddress, marginType_);
-        } else if (positionType_ == ICentralRegistry.PositionType.SHORT) {
+        (tokenId, proxyAddress) = _createPosition(params, implementationAddress, marginType_);
         
-        } else {
-            revert InvalidPositionType();
-        }
     }
 
-    function _createLongPosition(NewPositionParams memory params, address implementationAddress, ICentralRegistry.MarginType marginType_) 
+    function _createPosition(NewPositionParams memory params, address implementationAddress, ICentralRegistry.MarginType marginType_) 
         internal returns (uint256 tokenId, address proxyAddress) 
     {
         IERC20 marginToken;
@@ -98,7 +106,9 @@ contract Master {
         IProxy(proxyAddress).addToPosition(_positionParams.collateralAmount, _positionParams.flashLoanAmount, _positionParams.minTokenOut, _positionParams.moneyMarketBorrowAmount);
     }
 
-    function removeFromPosition(uint256 _tokenId) onlyNFTOwner(_tokenId) public {}
+    function removeFromPosition(uint256 _tokenId) onlyNFTOwner(_tokenId) public {
+
+    }
 
     function closePosition(uint256 _tokenId) onlyNFTOwner(_tokenId) public {}
 }

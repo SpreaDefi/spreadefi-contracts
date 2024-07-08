@@ -5,15 +5,24 @@ import "./Proxy.sol";
 import "./interfaces/IProxy.sol";
 import "./interfaces/ILeverageNFT.sol";
 
+
 contract Factory {
 
     ILeverageNFT public leverageNFT;
+    address public master;
+
+    error unauthorized();
+
+    modifier onlyMaster() {
+        if(msg.sender != master) revert();
+        _;
+    }
     
     function createProxy(
         address _to, 
         address _implementation, 
         address _quoteToken, 
-        address _baseToken) external returns(uint256 tokenId, address proxyAddress) {
+        address _baseToken) onlyMaster external returns(uint256 tokenId, address proxyAddress) {
 
         Proxy proxy = new Proxy(_implementation);
 
