@@ -39,14 +39,14 @@ contract Master {
         uint256 collateralAmount;
         uint256 flashLoanAmount;
         uint256 minTokenOut;
-        uint256 moneyMarketBorrowAmount;
+        bytes pathDefinition;
     }
 
     struct PositionParams {
         uint256 collateralAmount;
         uint256 flashLoanAmount;
         uint256 minTokenOut;
-        uint256 moneyMarketBorrowAmount;
+        bytes pathDefinition;
     }
 
     modifier onlyNFTOwner(uint256 tokenId) {
@@ -61,7 +61,6 @@ contract Master {
         if (params.collateralAmount == 0) revert ZeroAmount();
         if (params.flashLoanAmount == 0) revert ZeroAmount();
         if (params.minTokenOut == 0) revert ZeroAmount();
-        if (params.moneyMarketBorrowAmount == 0) revert ZeroAmount();
 
     }
 
@@ -97,13 +96,13 @@ contract Master {
 
         marginToken.safeIncreaseAllowance(proxyAddress, collateralAmount);
 
-        IProxy(proxyAddress).addToPosition(collateralAmount, params.flashLoanAmount, params.minTokenOut, params.moneyMarketBorrowAmount);
+        IProxy(proxyAddress).addToPosition(collateralAmount, params.flashLoanAmount, params.minTokenOut, params.pathDefinition);
     }
 
 
     function addToPosition(uint256 _tokenId, PositionParams memory _positionParams) onlyNFTOwner(_tokenId) public {
         address proxyAddress = leverageNFT.tokenIdToProxy(_tokenId);
-        IProxy(proxyAddress).addToPosition(_positionParams.collateralAmount, _positionParams.flashLoanAmount, _positionParams.minTokenOut, _positionParams.moneyMarketBorrowAmount);
+        IProxy(proxyAddress).addToPosition(_positionParams.collateralAmount, _positionParams.flashLoanAmount, _positionParams.minTokenOut, _positionParams.pathDefinition);
     }
 
     function removeFromPosition(uint256 _tokenId) onlyNFTOwner(_tokenId) public {
