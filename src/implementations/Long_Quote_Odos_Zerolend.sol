@@ -6,18 +6,21 @@ import "../interfaces/external/zerolend/IFlashLoanSimpleReceiver.sol";
 import "../interfaces/external/zerolend/IPoolAddressProvider.sol";
 import "../interfaces/external/zerolend/IPool.sol";
 import "../interfaces/external/odos/IOdosRouterV2.sol";
+import "../interfaces/ILeverageNFT.sol";
+import {DataTypes} from "../interfaces/external/zerolend/DataTypes.sol";
 
 contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
 
     using SafeERC20 for IERC20;
 
     bool initialized;
+    uint256 tokenId; // NFT token ID that represents this position
 
     address public QUOTE_TOKEN;
     address public BASE_TOKEN;
 
-    uint256 marginAmount;
-    uint256 borrowAmount;
+    uint256 public marginAmount;
+    uint256 public borrowAmount;
 
     // ZEROLEND
     IPool public pool;
@@ -29,8 +32,9 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
 
     error AlreadyInitialized();
     
-    function initialize(address _quoteToken, address _baseToken) external {
+    function initialize(uint256 _tokenId, address _quoteToken, address _baseToken) external {
         if(initialized) revert AlreadyInitialized();
+        tokenId = _tokenId;
         QUOTE_TOKEN = _quoteToken;
         BASE_TOKEN = _baseToken;
         initialized = true;
@@ -80,18 +84,33 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
 
         bool isAdd = true;
 
-        bytes memory data = abi.encode(isAdd, _marginAmount, _flashLoanAmount, _minTokenOut, _pathDefinition);
+        bytes memory data = abi.encode(isAdd, _marginAmount, _minTokenOut, _pathDefinition);
 
         // 1. Flash loan the _flashLoanAmount
         pool.flashLoanSimple(address(this), QUOTE_TOKEN, _flashLoanAmount, data, 0);
         
     }
 
-    function removeFromPosition(uint256 _baseRepayAmount) external {
+    function removeFromPosition(
+        uint256 _baseReduction, 
+        uint256 _flashLoanAmount,
+        uint256 _minTokenOut,
+        bytes calldata _pathDefinition) external {
 
         bool isAdd = false;
 
-        bytes memory data = abi.encode(isAdd);
+        bytes memory data = abi.encode(isAdd, _baseReduction, _minTokenOut, _pathDefinition);
+
+        // 1. Flash loan the _flashLoanAmount
+        pool.flashLoanSimple(address(this), BASE_TOKEN, _flashLoanAmount, data, 0);
+    }
+
+    // VIEW FUNCTIONS
+    function _getReserveData(address _asset) internal view returns (address, address){
+        DataTypes.ReserveData memory assetData = pool.getReserveData(_asset);
+        address aTokenAddress = assetData.aTokenAddress;
+        address variableDebtTokenAddress = assetData.variableDebtTokenAddress;
+        return (aTokenAddress, variableDebtTokenAddress);
     }
 
     // FLASH LOAN CALLBACK
@@ -105,19 +124,17 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
     ) external override returns (bool) {
 
         require (msg.sender == address(pool), "Caller is not the pool");
-
         require(initiator == address(this), "Initiator is not this contract");
 
         uint256 totalDebt = amount + premium;
         
-        (bool isAdd, uint256 marginAmount_, uint256 flashLoanAmount_, uint256 minTokenOut_, bytes memory pathDefinition_) = abi.decode(params, (bool, uint256, uint256, uint256, bytes));
+        (bool isAdd, uint256 marginOrBaseReductionAmount_, uint256 minTokenOut_, bytes memory pathDefinition_) = abi.decode(params, (bool, uint256, uint256, bytes));
 
-        // if isAdd, then add to position
         if (isAdd) {
-
-            uint256 tokenInAmount = flashLoanAmount_ + marginAmount_;
+            uint256 tokenInAmount = amount + marginOrBaseReductionAmount_;
 
             // 1. Swap the flash loaned (quote) amount + margin (quote) for the base token
+            IERC20(QUOTE_TOKEN).safeIncreaseAllowance(address(pool), tokenInAmount);
             uint256 amountOut = _performSwap(initiator, QUOTE_TOKEN, tokenInAmount, BASE_TOKEN, minTokenOut_, minTokenOut_, pathDefinition_);
 
             if (amountOut > minTokenOut_) {
@@ -126,24 +143,46 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
             }
 
             // 2. Deposit the base token to the money market
+            IERC20(BASE_TOKEN).safeIncreaseAllowance(address(pool), amountOut);
             pool.supply(BASE_TOKEN, amountOut, initiator, 0);
 
             // 3. Borrow the money market borrow amount
             pool.borrow(BASE_TOKEN, totalDebt, 1, 0, initiator);
 
             // Accounting
-            marginAmount += marginAmount_;
+            marginAmount += marginOrBaseReductionAmount_; // amount of quote token provided as margin, does not reflect the actual margin worth. only the amount provided
+            borrowAmount += amountOut; // amount of base token borrowed, does not reflect the actual borrow amount if the position is partially liquidated
 
-        } 
-        // if isAdd is false, then remove from position
-        else {
+        } else {
+            // 0. Get reserve data
+            (, address quoteVariableDebtTokenAddress) = _getReserveData(QUOTE_TOKEN);
+            
+            // 1. Repay part of the (QUOTE) borrowed amount to unlock collateral (BASE)
+            IERC20(quoteVariableDebtTokenAddress).safeIncreaseAllowance(address(pool), amount);
+            pool.repay(BASE_TOKEN, amount, 1, initiator);
 
+            // 2. Withdraw the base token that was unlocked
+            (address baseAtokenAddress,) = _getReserveData(BASE_TOKEN);
 
+            IERC20(baseAtokenAddress).safeIncreaseAllowance(address(pool), marginOrBaseReductionAmount_);
+            uint256 baseAmountUnlocked = pool.withdraw(BASE_TOKEN, marginOrBaseReductionAmount_, initiator);
+
+            // 3. Swap the unlocked base token for quote token
+            IERC20(BASE_TOKEN).safeIncreaseAllowance(address(pool), baseAmountUnlocked);
+            uint256 amountOut = _performSwap(initiator, BASE_TOKEN, baseAmountUnlocked, QUOTE_TOKEN, minTokenOut_, minTokenOut_, pathDefinition_);
+
+            // 4. Approve the pool to transfer the necessary amount for the flash loan repayment
+
+            // 5. if amountOut > totalDebt, transfer the remaining balance to the initiator
+            if (amountOut > totalDebt) {
+                IERC20(QUOTE_TOKEN).safeIncreaseAllowance(address(pool), amountOut);
+                uint256 remainingBalance = amountOut - totalDebt;
+                IERC20(QUOTE_TOKEN).safeTransfer(msg.sender, remainingBalance);
+            } else {
+                IERC20(QUOTE_TOKEN).safeIncreaseAllowance(address(pool), totalDebt);
+            }
         }
 
-        // Repay the loan
-        
-        IERC20(asset).approve(address(pool), totalDebt);
         return true;
     }
 

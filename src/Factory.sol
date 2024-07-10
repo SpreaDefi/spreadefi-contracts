@@ -30,6 +30,6 @@ contract Factory {
 
         tokenId = leverageNFT.mint(_to, proxyAddress);
 
-        IProxy(proxyAddress).initialize(_quoteToken, _baseToken);
+        IProxy(proxyAddress).initialize(tokenId, _quoteToken, _baseToken);
     }
 }
