@@ -31,6 +31,9 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
     IOdosRouterV2 public odosRouter;
 
     error AlreadyInitialized();
+
+    event debugUint(string, uint256);
+    event debugAddress(string, address);
     
     function initialize(uint256 _tokenId, address _quoteToken, address _baseToken, address _pool) external {
         if(initialized) revert AlreadyInitialized();
@@ -66,6 +69,7 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
             require(msg.value == inputAmount, "Incorrect ETH amount");
             amountOut = odosRouter.swap(tokenInfo, pathDefinition, address(this), uint32(0));
         } else {
+            emit debugUint("trying to safe transfer", inputAmount);
             IERC20(inputToken).safeTransferFrom(msg.sender, address(this), inputAmount);
             IERC20(inputToken).safeIncreaseAllowance(odosRouterAddress, inputAmount);
             amountOut = odosRouter.swap(tokenInfo, pathDefinition, address(this), uint32(0));
@@ -130,14 +134,18 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
         require(initiator == address(this), "Initiator is not this contract");
 
         uint256 totalDebt = amount + premium;
+        emit debugUint("totalDebt", totalDebt);
         
         (bool isAdd, uint256 marginOrBaseReductionAmount_, uint256 minTokenOut_, bytes memory pathDefinition_) = abi.decode(params, (bool, uint256, uint256, bytes));
 
         if (isAdd) {
 
+        emit debugUint("isAdd", 0);
+
             _addPosition(amount, marginOrBaseReductionAmount_, minTokenOut_, pathDefinition_, totalDebt, initiator);
 
         } else {
+            emit debugUint ("!isAdd", 0);
             
             _removePosition(amount, marginOrBaseReductionAmount_, minTokenOut_, pathDefinition_, totalDebt, initiator);
         }
@@ -154,6 +162,7 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
         address initiator
     ) internal {
         uint256 tokenInAmount = amount + marginOrBaseReductionAmount_;
+        emit debugUint("tokenInAmount", tokenInAmount);
 
         // 1. Swap the flash loaned (quote) amount + margin (quote) for the base token
         IERC20(QUOTE_TOKEN).safeIncreaseAllowance(address(pool), tokenInAmount);
