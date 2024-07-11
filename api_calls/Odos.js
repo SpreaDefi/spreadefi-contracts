@@ -1,55 +1,84 @@
 const axios = require('axios');
 
-// The URL of the API endpoint
-const url = 'https://api.odos.xyz/sor/quote/v2';
-
-// Token addresses and Chain ID
+// Addresses for tokens (USDC and WETH)
 const USDCAddress = "0x176211869cA2b568f2A7D4EE941E073a821EE1ff";
 const WETHAddress = "0xe5D7C2a44FfDDf6b295A15c148167daaAf5Cf34f";
-const chainId = 59144; // Replace with the actual Chain ID if different
+const LineaChainId = 59144;
+const userAddr = '0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496'; // Replace with the correct address
 
-// The request body parameters with only required fields
-const requestBody = {
-  chainId: chainId,
-  inputTokens: [
-    {
-      tokenAddress: USDCAddress, // USDC address
-      amount: '10000000' // Amount in fixed precision (example: 10 USDC with 6 decimals)
+// Function to get the quote and pathId
+async function getQuote() {
+    const url = 'https://api.odos.xyz/sor/quote/v2';
+    const requestBody = {
+        chainId: LineaChainId,
+        inputTokens: [
+            {
+                tokenAddress: USDCAddress,
+                amount: '300000000' // Amount in smallest unit (e.g., wei for ETH)
+            }
+        ],
+        outputTokens: [
+            {
+                tokenAddress: WETHAddress,
+                proportion: 1
+            }
+        ],
+        userAddr: userAddr // Include user address in the quote request
+    };
+
+    try {
+        const response = await axios.post(url, requestBody);
+        console.log('Quote response:', response.data);
+        return response.data.pathId;
+    } catch (error) {
+        console.error('Failed to retrieve data:', error);
+        return null;
     }
-  ],
-  outputTokens: [
-    {
-      tokenAddress: WETHAddress, // WETH address
-      proportion: 1 // Proportion for a single swap
+}
+
+// Function to assemble the transaction using pathId
+async function assembleTransaction(pathId) {
+    const url = 'https://api.odos.xyz/sor/assemble';
+    const requestBody = {
+        userAddr: userAddr, // Ensure this is the address used to generate the quote
+        pathId: pathId,
+        simulate: false
+    };
+
+    try {
+        const response = await axios.post(url, requestBody);
+        console.log('Assemble response:', response.data); // Print full response for debugging
+        return response.data.transaction.data;
+    } catch (error) {
+        if (error.response) {
+            console.error('Error response data:', JSON.stringify(error.response.data, null, 2));
+            console.error('Error status:', error.response.status);
+            console.error('Error headers:', JSON.stringify(error.response.headers, null, 2));
+        } else if (error.request) {
+            console.error('Error request:', error.request);
+        } else {
+            console.error('Error message:', error.message);
+        }
+        console.error('Error config:', JSON.stringify(error.config, null, 2));
+        return null;
     }
-  ]
-};
+}
 
-// Set headers if required by the API (example)
-const headers = {
-  'Content-Type': 'application/json'
-};
-
-// Make the POST request to the API endpoint
-axios.post(url, requestBody, { headers: headers })
-  .then(response => {
-    // Handle the response data
-    console.log(response.data);
-  })
-  .catch(error => {
-    // Handle any errors
-    if (error.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
-      console.error('Error response:', error.response.data);
-      console.error('Error status:', error.response.status);
-      console.error('Error headers:', error.response.headers);
-    } else if (error.request) {
-      // The request was made but no response was received
-      console.error('Error request:', error.request);
+// Main function to get quote and assemble transaction with detailed logging
+async function main() {
+    const pathId = await getQuote();
+    if (pathId) {
+        console.log(`Path ID: ${pathId}`);
+        const pathDefinition = await assembleTransaction(pathId);
+        if (pathDefinition) {
+            console.log(`Path Definition: ${pathDefinition}`);
+        } else {
+            console.log('Failed to retrieve path definition.');
+        }
     } else {
-      // Something happened in setting up the request that triggered an Error
-      console.error('Error message:', error.message);
+        console.log('Failed to retrieve path ID.');
     }
-    console.error('Error config:', error.config);
-  });
+}
+
+// Execute the main function
+main();
