@@ -32,12 +32,13 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
 
     error AlreadyInitialized();
     
-    function initialize(uint256 _tokenId, address _quoteToken, address _baseToken) external {
+    function initialize(uint256 _tokenId, address _quoteToken, address _baseToken, address _pool) external {
         if(initialized) revert AlreadyInitialized();
         tokenId = _tokenId;
         QUOTE_TOKEN = _quoteToken;
         BASE_TOKEN = _baseToken;
         initialized = true;
+        pool = IPool(_pool);
     }
 
     // INTERNAL FUNCTIONS
@@ -81,6 +82,8 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
         uint256 _minTokenOut,
         bytes calldata _pathDefinition
         ) external {
+
+        IERC20(QUOTE_TOKEN).safeTransferFrom(msg.sender, address(this), _marginAmount); // rmemove later
 
         bool isAdd = true;
 
@@ -131,59 +134,83 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
         (bool isAdd, uint256 marginOrBaseReductionAmount_, uint256 minTokenOut_, bytes memory pathDefinition_) = abi.decode(params, (bool, uint256, uint256, bytes));
 
         if (isAdd) {
-            uint256 tokenInAmount = amount + marginOrBaseReductionAmount_;
 
-            // 1. Swap the flash loaned (quote) amount + margin (quote) for the base token
-            IERC20(QUOTE_TOKEN).safeIncreaseAllowance(address(pool), tokenInAmount);
-            uint256 amountOut = _performSwap(initiator, QUOTE_TOKEN, tokenInAmount, BASE_TOKEN, minTokenOut_, minTokenOut_, pathDefinition_);
-
-            if (amountOut > minTokenOut_) {
-                uint256 extraBaseToken = amountOut - minTokenOut_;
-                amountOut += extraBaseToken; // Add extra base token to the amount out
-            }
-
-            // 2. Deposit the base token to the money market
-            IERC20(BASE_TOKEN).safeIncreaseAllowance(address(pool), amountOut);
-            pool.supply(BASE_TOKEN, amountOut, initiator, 0);
-
-            // 3. Borrow the money market borrow amount
-            pool.borrow(BASE_TOKEN, totalDebt, 1, 0, initiator);
-
-            // Accounting
-            marginAmount += marginOrBaseReductionAmount_; // amount of quote token provided as margin, does not reflect the actual margin worth. only the amount provided
-            borrowAmount += amountOut; // amount of base token borrowed, does not reflect the actual borrow amount if the position is partially liquidated
+            _addPosition(amount, marginOrBaseReductionAmount_, minTokenOut_, pathDefinition_, totalDebt, initiator);
 
         } else {
-            // 0. Get reserve data
-            (, address quoteVariableDebtTokenAddress) = _getReserveData(QUOTE_TOKEN);
             
-            // 1. Repay part of the (QUOTE) borrowed amount to unlock collateral (BASE)
-            IERC20(quoteVariableDebtTokenAddress).safeIncreaseAllowance(address(pool), amount);
-            pool.repay(BASE_TOKEN, amount, 1, initiator);
-
-            // 2. Withdraw the base token that was unlocked
-            (address baseAtokenAddress,) = _getReserveData(BASE_TOKEN);
-
-            IERC20(baseAtokenAddress).safeIncreaseAllowance(address(pool), marginOrBaseReductionAmount_);
-            uint256 baseAmountUnlocked = pool.withdraw(BASE_TOKEN, marginOrBaseReductionAmount_, initiator);
-
-            // 3. Swap the unlocked base token for quote token
-            IERC20(BASE_TOKEN).safeIncreaseAllowance(address(pool), baseAmountUnlocked);
-            uint256 amountOut = _performSwap(initiator, BASE_TOKEN, baseAmountUnlocked, QUOTE_TOKEN, minTokenOut_, minTokenOut_, pathDefinition_);
-
-            // 4. Approve the pool to transfer the necessary amount for the flash loan repayment
-
-            // 5. if amountOut > totalDebt, transfer the remaining balance to the initiator
-            if (amountOut > totalDebt) {
-                IERC20(QUOTE_TOKEN).safeIncreaseAllowance(address(pool), amountOut);
-                uint256 remainingBalance = amountOut - totalDebt;
-                IERC20(QUOTE_TOKEN).safeTransfer(msg.sender, remainingBalance);
-            } else {
-                IERC20(QUOTE_TOKEN).safeIncreaseAllowance(address(pool), totalDebt);
-            }
+            _removePosition(amount, marginOrBaseReductionAmount_, minTokenOut_, pathDefinition_, totalDebt, initiator);
         }
 
         return true;
+    }
+
+    function _addPosition(
+        uint256 amount,
+        uint256 marginOrBaseReductionAmount_,
+        uint256 minTokenOut_,
+        bytes memory pathDefinition_,
+        uint256 totalDebt,
+        address initiator
+    ) internal {
+        uint256 tokenInAmount = amount + marginOrBaseReductionAmount_;
+
+        // 1. Swap the flash loaned (quote) amount + margin (quote) for the base token
+        IERC20(QUOTE_TOKEN).safeIncreaseAllowance(address(pool), tokenInAmount);
+        uint256 amountOut = _performSwap(initiator, QUOTE_TOKEN, tokenInAmount, BASE_TOKEN, minTokenOut_, minTokenOut_, pathDefinition_);
+
+        if (amountOut > minTokenOut_) {
+            uint256 extraBaseToken = amountOut - minTokenOut_;
+            amountOut += extraBaseToken; // Add extra base token to the amount out
+        }
+
+        // 2. Deposit the base token to the money market
+        IERC20(BASE_TOKEN).safeIncreaseAllowance(address(pool), amountOut);
+        pool.supply(BASE_TOKEN, amountOut, initiator, 0);
+
+        // 3. Borrow the money market borrow amount
+        pool.borrow(BASE_TOKEN, totalDebt, 1, 0, initiator);
+
+        IERC20(QUOTE_TOKEN).safeIncreaseAllowance(address(pool), totalDebt);
+
+        // Accounting
+        marginAmount += marginOrBaseReductionAmount_; // amount of quote token provided as margin, does not reflect the actual margin worth. only the amount provided
+        borrowAmount += amountOut; // amount of base token borrowed, does not reflect the actual borrow amount if the position is partially liquidated
+    }
+
+    function _removePosition(
+        uint256 amount,
+        uint256 marginOrBaseReductionAmount_,
+        uint256 minTokenOut_,
+        bytes memory pathDefinition_,
+        uint256 totalDebt,
+        address initiator
+    ) internal {
+        // 0. Get reserve data
+        (, address quoteVariableDebtTokenAddress) = _getReserveData(QUOTE_TOKEN);
+        
+        // 1. Repay part of the (QUOTE) borrowed amount to unlock collateral (BASE)
+        IERC20(quoteVariableDebtTokenAddress).safeIncreaseAllowance(address(pool), amount);
+        pool.repay(BASE_TOKEN, amount, 1, initiator);
+
+        // 2. Withdraw the base token that was unlocked
+        (address baseAtokenAddress,) = _getReserveData(BASE_TOKEN);
+
+        IERC20(baseAtokenAddress).safeIncreaseAllowance(address(pool), marginOrBaseReductionAmount_);
+        uint256 baseAmountUnlocked = pool.withdraw(BASE_TOKEN, marginOrBaseReductionAmount_, initiator);
+
+        // 3. Swap the unlocked base token for quote token
+        IERC20(BASE_TOKEN).safeIncreaseAllowance(address(pool), baseAmountUnlocked);
+        uint256 amountOut = _performSwap(initiator, BASE_TOKEN, baseAmountUnlocked, QUOTE_TOKEN, minTokenOut_, minTokenOut_, pathDefinition_);
+
+        // 4. Approve the pool to transfer the necessary amount for the flash loan repayment
+        if (amountOut > totalDebt) {
+            IERC20(QUOTE_TOKEN).safeIncreaseAllowance(address(pool), amountOut);
+            uint256 remainingBalance = amountOut - totalDebt;
+            IERC20(QUOTE_TOKEN).safeTransfer(msg.sender, remainingBalance);
+        } else {
+            IERC20(QUOTE_TOKEN).safeIncreaseAllowance(address(pool), totalDebt);
+        }
     }
 
     // FlashLoanSimpleReceiver
