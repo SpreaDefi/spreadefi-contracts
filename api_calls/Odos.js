@@ -3,43 +3,53 @@ const axios = require('axios');
 // The URL of the API endpoint
 const url = 'https://api.odos.xyz/sor/quote/v2';
 
-// The request body parameters
+// Token addresses and Chain ID
+const USDCAddress = "0x176211869cA2b568f2A7D4EE941E073a821EE1ff";
+const WETHAddress = "0xe5D7C2a44FfDDf6b295A15c148167daaAf5Cf34f";
+const chainId = 59144; // Replace with the actual Chain ID if different
+
+// The request body parameters with only required fields
 const requestBody = {
-  chainId: 1, // Example Chain ID, replace with actual Chain ID
+  chainId: chainId,
   inputTokens: [
     {
-      tokenAddress: '0xTokenAddress1', // Replace with actual token address
-      amount: '1000000000000000000' // Amount in fixed precision (example: 1 token with 18 decimals)
+      tokenAddress: USDCAddress, // USDC address
+      amount: '10000000' // Amount in fixed precision (example: 10 USDC with 6 decimals)
     }
   ],
   outputTokens: [
     {
-      tokenAddress: '0xTokenAddress2', // Replace with actual token address
+      tokenAddress: WETHAddress, // WETH address
       proportion: 1 // Proportion for a single swap
     }
-  ],
-  gasPrice: '50000000000', // Optional: Gas price in wei (50 gwei example)
-  userAddr: '0xYourWalletAddress', // Optional: User wallet address
-  slippageLimitPercent: 0.5, // Optional: Slippage limit in percent
-  sourceBlacklist: [], // Optional: List of liquidity providers to exclude
-  sourceWhitelist: [], // Optional: List of liquidity providers to include exclusively
-  poolBlacklist: [], // Optional: List of pool IDs to exclude
-  pathVizImage: false, // Optional: Return a Base64 encoded SVG of path visualization image
-  pathVizImageConfig: {}, // Optional: Customization parameters for the visualization image
-  disableRFQs: true, // Optional: Disable RFQs
-  referralCode: 'yourReferralCode', // Optional: Referral code
-  compact: true, // Optional: Use compact call data
-  likeAsset: false, // Optional: Route through like assets only
-  simple: false // Optional: Simplify the quote
+  ]
+};
+
+// Set headers if required by the API (example)
+const headers = {
+  'Content-Type': 'application/json'
 };
 
 // Make the POST request to the API endpoint
-axios.post(url, requestBody)
+axios.post(url, requestBody, { headers: headers })
   .then(response => {
     // Handle the response data
     console.log(response.data);
   })
   .catch(error => {
     // Handle any errors
-    console.error(`Failed to retrieve data: ${error}`);
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      console.error('Error response:', error.response.data);
+      console.error('Error status:', error.response.status);
+      console.error('Error headers:', error.response.headers);
+    } else if (error.request) {
+      // The request was made but no response was received
+      console.error('Error request:', error.request);
+    } else {
+      // Something happened in setting up the request that triggered an Error
+      console.error('Error message:', error.message);
+    }
+    console.error('Error config:', error.config);
   });
