@@ -28,7 +28,7 @@ async function getQuote() {
 
     try {
         const response = await axios.post(url, requestBody);
-        console.log('Quote response:', response.data);
+        console.log('outAmounts:', response.data.outAmounts);
         return response.data.pathId;
     } catch (error) {
         console.error('Failed to retrieve data:', error);
@@ -47,7 +47,7 @@ async function assembleTransaction(pathId) {
 
     try {
         const response = await axios.post(url, requestBody);
-        console.log('Assemble response:', response.data); // Print full response for debugging
+        // console.log('Assemble response:', response.data); // Print full response for debugging
         return response.data.transaction.data;
     } catch (error) {
         if (error.response) {
@@ -68,7 +68,7 @@ async function assembleTransaction(pathId) {
 async function main() {
     const pathId = await getQuote();
     if (pathId) {
-        console.log(`Path ID: ${pathId}`);
+        // console.log(`Path ID: ${pathId}`);
         const pathDefinition = await assembleTransaction(pathId);
         if (pathDefinition) {
             console.log(`Path Definition: ${pathDefinition}`);

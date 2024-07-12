@@ -35,13 +35,16 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
     event debugUint(string, uint256);
     event debugAddress(string, address);
     
-    function initialize(uint256 _tokenId, address _quoteToken, address _baseToken, address _pool) external {
+    function initialize(uint256 _tokenId, address _quoteToken, address _baseToken, address _pool, address _odosRouterAddress) external {
         if(initialized) revert AlreadyInitialized();
         tokenId = _tokenId;
         QUOTE_TOKEN = _quoteToken;
         BASE_TOKEN = _baseToken;
         initialized = true;
         pool = IPool(_pool);
+        addressesProvider = IPoolAddressesProvider(_pool);
+        odosRouterAddress = _odosRouterAddress;
+        odosRouter = IOdosRouterV2(_odosRouterAddress);
     }
 
     // INTERNAL FUNCTIONS
@@ -61,8 +64,8 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
             inputReceiver: initiator,
             outputToken: outputToken,
             outputQuote: outputQuote,
-            outputMin: outputMin,
-            outputReceiver: msg.sender
+            outputMin: 1000,
+            outputReceiver: initiator
         });
 
         if (inputToken == address(0)) {
@@ -70,9 +73,10 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
             amountOut = odosRouter.swap(tokenInfo, pathDefinition, address(this), uint32(0));
         } else {
             emit debugUint("trying to safe transfer", inputAmount);
-            IERC20(inputToken).safeTransferFrom(msg.sender, address(this), inputAmount);
+            // IERC20(inputToken).safeTransferFrom(msg.sender, address(this), inputAmount);
             IERC20(inputToken).safeIncreaseAllowance(odosRouterAddress, inputAmount);
-            amountOut = odosRouter.swap(tokenInfo, pathDefinition, address(this), uint32(0));
+            emit debugUint("trying to swap", inputAmount);
+            amountOut = odosRouter.swap(tokenInfo, pathDefinition, odosRouterAddress, uint32(0));
         }
 
         return amountOut;
@@ -165,7 +169,7 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
         emit debugUint("tokenInAmount", tokenInAmount);
 
         // 1. Swap the flash loaned (quote) amount + margin (quote) for the base token
-        IERC20(QUOTE_TOKEN).safeIncreaseAllowance(address(pool), tokenInAmount);
+        // IERC20(QUOTE_TOKEN).safeIncreaseAllowance(odosRouterAddress, tokenInAmount);
         uint256 amountOut = _performSwap(initiator, QUOTE_TOKEN, tokenInAmount, BASE_TOKEN, minTokenOut_, minTokenOut_, pathDefinition_);
 
         if (amountOut > minTokenOut_) {
