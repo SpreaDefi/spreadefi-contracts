@@ -34,6 +34,8 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
 
     event debugUint(string, uint256);
     event debugAddress(string, address);
+    event debugString(string);
+    event debugBytes(string, bytes);
     
     function initialize(uint256 _tokenId, address _quoteToken, address _baseToken, address _pool, address _odosRouterAddress) external {
         if(initialized) revert AlreadyInitialized();
@@ -51,8 +53,12 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
 
 
     function _executeOdosTransaction(bytes memory transactionData) internal returns (bytes memory) {
+        // Use a low-level call to execute the transaction
+        emit debugString("Executing Odos transaction");
+        emit debugBytes("Transaction data", transactionData);
         (bool success, bytes memory returnData) = odosRouterAddress.call(transactionData);
         require(success, "Odos transaction execution failed");
+        emit debugString("Odos transaction executed successfully");
         return returnData;
     }
 
@@ -69,7 +75,7 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
         // Quote balance after swap
         uint256 quoteBalanceAfter = IERC20(BASE_TOKEN).balanceOf(address(this));
 
-        quoteIn = quoteBalanceBefore - quoteBalanceAfter;
+        quoteIn = quoteBalanceAfter - quoteBalanceBefore;
 
         
     }
@@ -97,6 +103,8 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
         uint256 _flashLoanAmount,
         bytes memory _odosTransactionData
         ) external {
+
+        emit debugBytes("Input Transaction Data", _odosTransactionData);
 
         IERC20(QUOTE_TOKEN).safeTransferFrom(msg.sender, address(this), _marginAmount); // rmemove later after testing maybe
 
@@ -153,7 +161,7 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
 
         emit debugUint("isAdd", 0);
 
-            _addPosition(marginAddedOrBaseReductionAmount_,odosTransactionData_, totalDebt);
+            _addPosition(flashLoanAmount, marginAddedOrBaseReductionAmount_,odosTransactionData_, totalDebt);
 
         } else {
             emit debugUint ("!isAdd", 0);
@@ -167,10 +175,16 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
     }
 
     function _addPosition(
+        uint256 _flashLoanAmount,
         uint256 marginAddAmount,
         bytes memory _transactionData,
         uint256 totalDebt
     ) internal {
+
+        uint256 swapInAmount = _flashLoanAmount + marginAddAmount;
+
+        // 0. approve odos router to spend the quote token
+        IERC20(QUOTE_TOKEN).safeIncreaseAllowance(odosRouterAddress, swapInAmount);
 
         // 1. Swap the flash loaned (quote) amount + margin (quote) for the base token
         // IERC20(QUOTE_TOKEN).safeIncreaseAllowance(odosRouterAddress, tokenInAmount);
@@ -181,11 +195,16 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
         pool.supply(BASE_TOKEN, baseAmountOut, address(this), 0);
 
         // 3. Borrow the money market borrow amount
-        pool.borrow(BASE_TOKEN, totalDebt, 1, 0, address(this));
+        pool.borrow(QUOTE_TOKEN, totalDebt, 2, 0, address(this));
+
+        emit debugUint("Quote token balance", IERC20(QUOTE_TOKEN).balanceOf(address(this)));
+        emit debugAddress("Quote token address", QUOTE_TOKEN);
 
         // Accounting
         marginAmount += marginAddAmount; // amount of quote token provided as margin, does not reflect the actual margin worth. only the amount provided
         borrowAmount += baseAmountOut; // amount of base token borrowed, does not reflect the actual borrow amount if the position is partially liquidated
+
+        IERC20(QUOTE_TOKEN).safeIncreaseAllowance(address(pool), totalDebt);
     }
 
     function _removePosition(

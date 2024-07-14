@@ -4,7 +4,7 @@ const axios = require('axios');
 const USDCAddress = "0x176211869cA2b568f2A7D4EE941E073a821EE1ff";
 const WETHAddress = "0xe5D7C2a44FfDDf6b295A15c148167daaAf5Cf34f";
 const LineaChainId = 59144;
-const userAddr = '0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496'; // Replace with the correct address
+const userAddr = '0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f'; // Replace with the correct address
 
 // Function to get the quote and pathId
 async function getQuote() {
@@ -23,15 +23,22 @@ async function getQuote() {
                 proportion: 1
             }
         ],
-        userAddr: userAddr // Include user address in the quote request
+        slippageLimitPercent: 5, // Setting the slippage limit to 5%
+        userAddr: userAddr
     };
 
     try {
         const response = await axios.post(url, requestBody);
-        console.log('outAmounts:', response.data.outAmounts);
-        return response.data.pathId;
+        console.log('Quote Response:', response.data);
+        if (response.data.pathId) {
+            console.log('outAmounts:', response.data.outAmounts);
+            return response.data.pathId;
+        } else {
+            console.error('No pathId returned in the quote response');
+            return null;
+        }
     } catch (error) {
-        console.error('Failed to retrieve data:', error);
+        console.error('Failed to retrieve quote data:', error);
         return null;
     }
 }
@@ -42,13 +49,19 @@ async function assembleTransaction(pathId) {
     const requestBody = {
         userAddr: userAddr, // Ensure this is the address used to generate the quote
         pathId: pathId,
-        simulate: false
+        simulate: false, // Optional, set to true if you want to simulate the transaction first
+        receiver: userAddr // Optional, specify a different receiver address for the transaction output
     };
 
     try {
         const response = await axios.post(url, requestBody);
-        // console.log('Assemble response:', response.data); // Print full response for debugging
-        return response.data.transaction.data;
+        console.log('Assemble Response:', response.data);
+        if (response.data.transaction && response.data.transaction.data) {
+            return response.data.transaction.data;
+        } else {
+            console.error('No transaction data returned in the assemble response');
+            return null;
+        }
     } catch (error) {
         if (error.response) {
             console.error('Error response data:', JSON.stringify(error.response.data, null, 2));
@@ -68,12 +81,12 @@ async function assembleTransaction(pathId) {
 async function main() {
     const pathId = await getQuote();
     if (pathId) {
-        // console.log(`Path ID: ${pathId}`);
-        const pathDefinition = await assembleTransaction(pathId);
-        if (pathDefinition) {
-            console.log(`Path Definition: ${pathDefinition}`);
+        console.log(`Path ID: ${pathId}`);
+        const transactionData = await assembleTransaction(pathId);
+        if (transactionData) {
+            console.log(`Transaction Data: ${transactionData}`);
         } else {
-            console.log('Failed to retrieve path definition.');
+            console.log('Failed to retrieve transaction data.');
         }
     } else {
         console.log('Failed to retrieve path ID.');
