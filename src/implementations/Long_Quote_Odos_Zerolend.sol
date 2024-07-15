@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "../libraries/openzeppelin/token/SafeERC20.sol";
-import "../interfaces/external/zerolend/IFlashLoanSimpleReceiver.sol";
-import "../interfaces/external/zerolend/IPoolAddressProvider.sol";
-import "../interfaces/external/zerolend/IPool.sol";
-import "../interfaces/external/odos/IOdosRouterV2.sol";
-import "../interfaces/ILeverageNFT.sol";
-import {DataTypes} from "../interfaces/external/zerolend/DataTypes.sol";
+import "src/libraries/openzeppelin/token/SafeERC20.sol";
+import "src/interfaces/external/zerolend/IFlashLoanSimpleReceiver.sol";
+import "src/interfaces/external/zerolend/IPoolAddressProvider.sol";
+import "src/interfaces/external/zerolend/IPool.sol";
+import "src/interfaces/external/odos/IOdosRouterV2.sol";
+import "src/interfaces/ILeverageNFT.sol";
+import {DataTypes} from "src/interfaces/external/zerolend/DataTypes.sol";
 
 contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
 
@@ -120,15 +120,14 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
     function removeFromPosition(
         uint256 _baseReduction, 
         uint256 _flashLoanAmount,
-        uint256 _minTokenOut,
-        bytes calldata _pathDefinition) external {
+        bytes calldata _odosTransactionData) external {
 
         bool isAdd = false;
 
-        bytes memory data = abi.encode(isAdd, _baseReduction, _minTokenOut, _pathDefinition);
+        bytes memory data = abi.encode(isAdd, _baseReduction, _odosTransactionData);
 
         // 1. Flash loan the _flashLoanAmount
-        pool.flashLoanSimple(address(this), BASE_TOKEN, _flashLoanAmount, data, 0);
+        pool.flashLoanSimple(address(this), QUOTE_TOKEN, _flashLoanAmount, data, 0);
     }
 
     // VIEW FUNCTIONS
@@ -217,23 +216,34 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
         (, address quoteVariableDebtTokenAddress) = _getReserveData(QUOTE_TOKEN);
         
         // 1. Repay part of the (QUOTE) borrowed amount to unlock collateral (BASE)
-        IERC20(quoteVariableDebtTokenAddress).safeIncreaseAllowance(address(pool), flashLoanAmount);
-        pool.repay(BASE_TOKEN, flashLoanAmount, 1, address(this));
+        emit debugUint("quote token balance", IERC20(QUOTE_TOKEN).balanceOf(address(this)));
+        emit debugUint("flash loan amount", flashLoanAmount);
+        emit debugUint("trying to increase allowance of debt token...",0);
+        IERC20(QUOTE_TOKEN).safeIncreaseAllowance(address(pool), flashLoanAmount);
+        // IERC20(quoteVariableDebtTokenAddress).safeIncreaseAllowance(address(pool), flashLoanAmount);
+        emit debugUint("Trying to repay...", 0);
+
+        pool.repay(QUOTE_TOKEN, flashLoanAmount, 2, address(this));
 
         // 2. Withdraw the base token that was unlocked
         (address baseAtokenAddress,) = _getReserveData(BASE_TOKEN);
 
         IERC20(baseAtokenAddress).safeIncreaseAllowance(address(pool), baseReductionAmount_);
+        emit debugUint("Trying to withdraw...", 0);
         uint256 baseAmountUnlocked = pool.withdraw(BASE_TOKEN, baseReductionAmount_, address(this));
 
+        emit debugUint("Base amount unlocked", baseAmountUnlocked);
+
         // 3. Swap the unlocked base token for quote token
-        IERC20(BASE_TOKEN).safeIncreaseAllowance(address(pool), baseAmountUnlocked);
+        // IERC20(BASE_TOKEN).safeIncreaseAllowance(address(pool), baseAmountUnlocked);
+        IERC20(BASE_TOKEN).safeIncreaseAllowance(odosRouterAddress, baseAmountUnlocked);
         (uint256 amountIn, uint256 amountOut) = _swapBaseForQuote( _transactionData);
 
         // 4. Approve the pool to transfer the necessary amount for the flash loan repayment
         if (amountOut > totalDebt) {
             IERC20(QUOTE_TOKEN).safeIncreaseAllowance(address(pool), amountOut);
             uint256 remainingBalance = amountOut - totalDebt;
+            emit debugUint("Remaining balance", remainingBalance);
             IERC20(QUOTE_TOKEN).safeTransfer(msg.sender, remainingBalance);
         } 
     }
