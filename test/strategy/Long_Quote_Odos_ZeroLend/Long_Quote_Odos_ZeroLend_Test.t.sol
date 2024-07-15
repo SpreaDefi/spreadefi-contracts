@@ -23,9 +23,11 @@ contract Long_Quote_Odos_ZeroLend_Test is Test {
 /* ################### START OF ODOS API VARIABLES ################### */
 
     // get from Odos API, call quote and then assemble, they are only valid for 60 seconds
-    bytes public odosAddData = hex"83bd37f90001176211869ca2b568f2a7d4ee941e073a821ee1ff0001e5d7c2a44ffddf6b295a15c148167daaaf5cf34f0411e1a30008013fc468540fa8b0028f5c0001d804BA88371A3f00dDaCA03Cbc2b6C47F38105FC000000015615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f0000000003010203000a0101010201ff000000000000000000000000000000000000000000586733678b9ac9da43dd7cb83bbb41d23677dfc3176211869ca2b568f2a7d4ee941e073a821ee1ff000000000000000000000000000000000000000000000000";
+    bytes public odosAddData = hex"83bd37f90001176211869ca2b568f2a7d4ee941e073a821ee1ff0001e5d7c2a44ffddf6b295a15c148167daaaf5cf34f0411e1a30008013980831db749a0028f5c0001d804BA88371A3f00dDaCA03Cbc2b6C47F38105FC000000015615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f000000000502020501741b8f48030101010102011e01884fbab10a0101030201000a0101040201ff000000000000000000000000000000000000000000000000000000000051a056cc4eb7d1feb896554f97aa01805d41f190176211869ca2b568f2a7d4ee941e073a821ee1ffe4f5dc6cab4b23e124d3a73a2cfee32dc070f72de331a3a42fd83a7f44daedc7ba212bdeb90ecf7b00000000000000000000000000000000";
 
-    bytes public odosRemoveData = hex"83bd37f90001e5d7c2a44ffddf6b295a15c148167daaaf5cf34f0001176211869ca2b568f2a7d4ee941e073a821ee1ff0738d7ea4c68000004032d72d2028f5c0001d804BA88371A3f00dDaCA03Cbc2b6C47F38105FC000000015615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f0000000003010203000a0101010200ff000000000000000000000000000000000000000000586733678b9ac9da43dd7cb83bbb41d23677dfc3e5d7c2a44ffddf6b295a15c148167daaaf5cf34f000000000000000000000000000000000000000000000000";
+    bytes public odosRemoveData = hex"83bd37f90001e5d7c2a44ffddf6b295a15c148167daaaf5cf34f0001176211869ca2b568f2a7d4ee941e073a821ee1ff0738d7ea4c680000040340d5e8028f5c0001d804BA88371A3f00dDaCA03Cbc2b6C47F38105FC000000015615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f0000000003010203000a0101010200ff000000000000000000000000000000000000000000586733678b9ac9da43dd7cb83bbb41d23677dfc3e5d7c2a44ffddf6b295a15c148167daaaf5cf34f000000000000000000000000000000000000000000000000";
+    
+    bytes public odosCloseData = hex"83bd37f90001e5d7c2a44ffddf6b295a15c148167daaaf5cf34f0001176211869ca2b568f2a7d4ee941e073a821ee1ff08013820cc94dfe78a0411d23185028f5c0001d804BA88371A3f00dDaCA03Cbc2b6C47F38105FC000000015615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f0000000003010204011c4e4ff40a0101010200000a0101030200ff00000000000000000000416e3b622867aa4af98fcf0e0b871a47a80a7d7ee5d7c2a44ffddf6b295a15c148167daaaf5cf34f7077f0cff76077d0ebb335b607db57440051055700000000";
     event debugBytes(string, bytes);
 
 /* ################### END OF ODOS API VARIABLES ################### */
@@ -44,7 +46,7 @@ contract Long_Quote_Odos_ZeroLend_Test is Test {
 
     function testAdd() public {
 
-        console.log(address(this));
+        console.log("TESTING ADD FUNCTION");
 
         IERC20(USDCAddress).approve(address(longQuoteOdosZerolend), OneHundredInUSDC);
 
@@ -57,7 +59,7 @@ contract Long_Quote_Odos_ZeroLend_Test is Test {
     // lower exposure, flash loan amount slightly less than the price of the base removal amount
     function testLowerExposure() public {
 
-        console.log(address(this));
+        console.log("TESTING LOWER EXPOSURE");
 
         IERC20(USDCAddress).approve(address(longQuoteOdosZerolend), OneHundredInUSDC);
 
@@ -69,6 +71,17 @@ contract Long_Quote_Odos_ZeroLend_Test is Test {
         longQuoteOdosZerolend.removeFromPosition(baseReduction, flashLoanAmount, odosRemoveData);
         
 
+    }
+
+    function testClose() public {
+            
+            console.log("TESTING CLOSE POSITION");
+    
+            IERC20(USDCAddress).approve(address(longQuoteOdosZerolend), OneHundredInUSDC);
+    
+            longQuoteOdosZerolend.addToPosition(OneHundredInUSDC, 2 * OneHundredInUSDC, odosAddData);
+    
+            longQuoteOdosZerolend.closePosition(odosCloseData);
     }
 
     
