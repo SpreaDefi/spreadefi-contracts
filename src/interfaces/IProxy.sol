@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 interface IProxy {
     function initialize(uint256 _tokenId, address _quoteToken, address _baseToken) external;
-    function addToPosition(uint256 _collateralAmount, uint256 _flashLoanAmount, uint256 _minTokenOut, bytes memory _pathDefinition) external;
+    function addToPosition(uint256 _collateralAmount, uint256 _flashLoanAmount, bytes memory _pathDefinition) external;
        function executeOperation(
         address asset,
         uint256 amount,
@@ -13,5 +13,8 @@ interface IProxy {
     ) external returns (bool);
 
     function MARGIN_TYPE() external view returns (uint256);
+
+    function QUOTE_TOKEN() external view returns (address);
+    function BASE_TOKEN() external view returns (address);
 
 }

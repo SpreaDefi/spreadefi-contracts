@@ -14,7 +14,7 @@ contract Factory {
     error unauthorized();
 
     modifier onlyMaster() {
-        address masterAddress = centralRegistry.protocols("MASTER");
+        address masterAddress = centralRegistry.core("MASTER");
 
         if(msg.sender != masterAddress) revert();
         _;
@@ -34,7 +34,7 @@ contract Factory {
 
         proxyAddress = address(proxy);
 
-        ILeverageNFT leverageNFT = ILeverageNFT(centralRegistry.protocols("LEVERAGE_NFT"));
+        ILeverageNFT leverageNFT = ILeverageNFT(centralRegistry.core("LEVERAGE_NFT"));
 
         tokenId = leverageNFT.mint(_to, proxyAddress);
 

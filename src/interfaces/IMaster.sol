@@ -16,11 +16,15 @@ interface IMaster {
         address implementation;
         address quoteToken;
         address baseToken;
+    }
+
+    struct PositionParams {
         uint256 collateralAmount;
         uint256 flashLoanAmount;
-        uint256 minTokenOut;
         bytes pathDefinition;
     }
 
     function createPosition(NewPositionParams memory params) external;
+
+    function addToPosition(uint256 _tokenId, PositionParams memory params) external;
 }

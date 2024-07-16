@@ -12,7 +12,7 @@ contract LeveragedNFT is ERC721A {
     mapping(uint256 => address) public tokenIdToProxy;
 
     modifier onlyFactory() {
-        address factory = centralRegistry.protocols("FACTORY");
+        address factory = centralRegistry.core("FACTORY");
         require(msg.sender == factory, "LeveragedNFT: Only factory");
         _;
     }

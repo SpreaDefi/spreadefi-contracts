@@ -28,6 +28,13 @@ contract Using_Proxy_Long_Quote_Odos_ZeroLend_Test is Test, IERC721Receiver {
     Factory factory;
     LeveragedNFT leveragedNFT;
 
+    /* %%%%%%%%%%%%%%%% ODOS API VARIABLES %%%%%%%%%%%%%%%% */
+
+    bytes odosAdd = hex"83bd37f90001176211869ca2b568f2a7d4ee941e073a821ee1ff0001e5d7c2a44ffddf6b295a15c148167daaaf5cf34f0411e1a300080132ea28589ac2b0028f5c0001d804BA88371A3f00dDaCA03Cbc2b6C47F38105FC000000015615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f0000000003010203000a0101010201ff000000000000000000000000000000000000000000586733678b9ac9da43dd7cb83bbb41d23677dfc3176211869ca2b568f2a7d4ee941e073a821ee1ff000000000000000000000000000000000000000000000000";
+
+
+    /* %%%%%%%%%%%%%%%% ODOS API VARIABLES %%%%%%%%%%%%%%%% */
+
     function setUp() public {
 
         centralRegistry = new CentralRegistry();
@@ -42,6 +49,10 @@ contract Using_Proxy_Long_Quote_Odos_ZeroLend_Test is Test, IERC721Receiver {
         centralRegistry.addImplementation("LONG_QUOTE_ODOS_ZEROLEND", address(longQuoteOdosZerolend));
         centralRegistry.addProtocol("ODOS_ROUTER", OdosRouterAddress);
         centralRegistry.addProtocol("ZEROLEND_POOL", zeroLendAddress);
+
+        address zeroLendPool = centralRegistry.protocols("ZEROLEND_POOL");
+        console.log("central registry address: %s", address(centralRegistry));
+        console.log("longQuoteOdosZerolend address: %s", address(longQuoteOdosZerolend));
     }
 
     function testCreatePosition() public {
@@ -53,11 +64,7 @@ contract Using_Proxy_Long_Quote_Odos_ZeroLend_Test is Test, IERC721Receiver {
         IMaster.NewPositionParams memory params = IMaster.NewPositionParams({
             implementation: address(longQuoteOdosZerolend),
             quoteToken: USDCAddress,
-            baseToken: WETHAddress,
-            collateralAmount: 100 * 10**6,
-            flashLoanAmount: 1000000000000000000,
-            minTokenOut: 1000000000000000000,
-            pathDefinition: abi.encodePacked(USDCAddress, WETHAddress)
+            baseToken: WETHAddress
         });
 
         IMaster(address(master)).createPosition(params);
@@ -65,6 +72,14 @@ contract Using_Proxy_Long_Quote_Odos_ZeroLend_Test is Test, IERC721Receiver {
         uint256 nftBalance = leveragedNFT.balanceOf(address(this));
 
         assertEq(nftBalance, 1);
+
+        IMaster.PositionParams memory position = IMaster.PositionParams({
+            collateralAmount: 100 * 10**6,
+            flashLoanAmount: 200 * 10**6,
+            pathDefinition: odosAdd
+        });
+
+        IMaster(address(master)).addToPosition(0, position);
 
     }
 

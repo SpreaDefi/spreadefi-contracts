@@ -34,6 +34,6 @@ contract CentralRegistry {
     }
 
     function addCore(string calldata _name, address _core) public onlyAdmin {
-        protocols[_name] = _core;
+        core[_name] = _core;
     }
 }

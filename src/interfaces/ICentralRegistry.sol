@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "../interfaces/ICentralRegistry.sol";
 
 interface ICentralRegistry {
-    function implementations(string calldata) external view returns (Implementation memory);
+    function implementations(string calldata) external view returns (address);
 
     function protocols(string calldata) external view returns (address);
 

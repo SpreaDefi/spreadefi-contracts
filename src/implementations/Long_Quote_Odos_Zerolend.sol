@@ -42,6 +42,7 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
 
     constructor(address _centralRegistry) {
         centralRegistry = ICentralRegistry(_centralRegistry);
+        emit debugAddress("Central Registry Address", address(centralRegistry));
     }
     
     function initialize(uint256 _tokenId, address _quoteToken, address _baseToken) external {
@@ -66,12 +67,24 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
 
         IERC20(QUOTE_TOKEN).safeTransferFrom(msg.sender, address(this), _marginAmount); // rmemove later after testing maybe
 
+        emit debugUint("Margin Amount", _marginAmount);
+
         Action action = Action.ADD;
+
+        emit debugUint("Action Add", 0);
 
         bytes memory data = abi.encode(action, _marginAmount, _odosTransactionData);
 
-        // 1. Flash loan the _flashLoanAmount
+        emit debugUint("Encoded data", 0);
+
+        emit debugAddress("centralRegistry Address", address(centralRegistry));
+        
         address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
+
+        emit debugUint("got pool address",0);
+
+        emit debugAddress("Pool Address", poolAddress);
+
         IPool(poolAddress).flashLoanSimple(address(this), QUOTE_TOKEN, _flashLoanAmount, data, 0);
         
     }

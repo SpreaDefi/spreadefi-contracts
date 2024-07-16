@@ -19,6 +19,8 @@ contract Master {
     error ZeroAddress();
     error ZeroAmount();
 
+    event debugString(string message);
+
 
     using SafeERC20 for IERC20;
 
@@ -32,21 +34,16 @@ contract Master {
         address implementation;
         address quoteToken;
         address baseToken;
-        uint256 collateralAmount;
-        uint256 flashLoanAmount;
-        uint256 minTokenOut;
-        bytes pathDefinition;
     }
 
     struct PositionParams {
         uint256 collateralAmount;
         uint256 flashLoanAmount;
-        uint256 minTokenOut;
         bytes pathDefinition;
     }
 
     modifier onlyNFTOwner(uint256 tokenId) {
-        address leverageNFTAddress = centralRegistry.protocols("LEVERAGE_NFT");
+        address leverageNFTAddress = centralRegistry.core("LEVERAGE_NFT");
         if(IERC721A(address(leverageNFTAddress)).ownerOf(tokenId) != msg.sender) revert InvalidTokenOwner();
         _;
     }
@@ -55,9 +52,6 @@ contract Master {
         if (params.implementation == address(0)) revert ImplementationNotFound();
         if (params.quoteToken == address(0)) revert ZeroAddress();
         if (params.baseToken == address(0)) revert ZeroAddress();
-        if (params.collateralAmount == 0) revert ZeroAmount();
-        if (params.flashLoanAmount == 0) revert ZeroAmount();
-        if (params.minTokenOut == 0) revert ZeroAmount();
 
     }
 
@@ -75,7 +69,6 @@ contract Master {
         IERC20 marginToken;
         address quoteToken = params.quoteToken;
         address baseToken = params.baseToken;
-        uint256 collateralAmount = params.collateralAmount;
         address implementationAddress = params.implementation;
         uint256 marginType = IProxy(implementationAddress).MARGIN_TYPE();
 
@@ -88,13 +81,11 @@ contract Master {
             revert InvalidMarginType();
         }
 
-        marginToken.safeTransferFrom(msg.sender, address(this), collateralAmount);
-
-        IFactory factory = IFactory(centralRegistry.protocols("FACTORY"));
+        IFactory factory = IFactory(centralRegistry.core("FACTORY"));
 
         (tokenId, proxyAddress) = factory.createProxy(msg.sender, implementationAddress, quoteToken, baseToken);
 
-        marginToken.safeIncreaseAllowance(proxyAddress, collateralAmount);
+        // marginToken.safeIncreaseAllowance(proxyAddress, collateralAmount);
 
         // marginToken.safeIncreaseAllowance(proxyAddress, collateralAmount);
 
@@ -104,9 +95,28 @@ contract Master {
 
 
     function addToPosition(uint256 _tokenId, PositionParams memory _positionParams) onlyNFTOwner(_tokenId) public {
-        ILeverageNFT leverageNFT = ILeverageNFT(centralRegistry.protocols("LEVERAGE_NFT"));
+        emit debugString("Adding to position");
+        ILeverageNFT leverageNFT = ILeverageNFT(centralRegistry.core("LEVERAGE_NFT"));
         address proxyAddress = leverageNFT.tokenIdToProxy(_tokenId);
-        IProxy(proxyAddress).addToPosition(_positionParams.collateralAmount, _positionParams.flashLoanAmount, _positionParams.minTokenOut, _positionParams.pathDefinition);
+
+        IERC20 marginToken;
+
+        uint256 marginType = IProxy(proxyAddress).MARGIN_TYPE();
+        if (marginType == 0) {
+            address quoteToken = IProxy(proxyAddress).QUOTE_TOKEN();
+            marginToken = IERC20(quoteToken);
+            marginToken.safeTransferFrom(msg.sender, address(this), _positionParams.collateralAmount);
+        } else if (marginType == 1) {
+            address baseToken = IProxy(proxyAddress).BASE_TOKEN();
+            marginToken = IERC20(baseToken);
+            marginToken.safeTransferFrom(msg.sender, address(this), _positionParams.collateralAmount);
+        } else {
+            revert InvalidMarginType();
+        }
+
+        marginToken.safeIncreaseAllowance(proxyAddress, _positionParams.collateralAmount);
+
+        IProxy(proxyAddress).addToPosition(_positionParams.collateralAmount, _positionParams.flashLoanAmount,_positionParams.pathDefinition);
     }
 
     function removeFromPosition(uint256 _tokenId) onlyNFTOwner(_tokenId) public {
