@@ -2,21 +2,24 @@
 pragma solidity ^0.8.0;
 
 import "./libraries/ERC721A/ERC721A.sol";
+import "src/interfaces/ICentralRegistry.sol";
 
 
 contract LeveragedNFT is ERC721A {
     
-    address public factory;
+    ICentralRegistry public centralRegistry;
 
     mapping(uint256 => address) public tokenIdToProxy;
 
     modifier onlyFactory() {
+        address factory = centralRegistry.protocols("FACTORY");
         require(msg.sender == factory, "LeveragedNFT: Only factory");
         _;
     }
 
-    constructor(string memory name_, string memory symbol_, address _factory) ERC721A(name_, symbol_) {
-        factory = _factory;
+    constructor(address _centralRegistry) ERC721A("LeveragedNFT", "LEVNFT") {
+        centralRegistry = ICentralRegistry(_centralRegistry);
+       
     }
 
 

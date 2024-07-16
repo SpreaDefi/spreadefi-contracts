@@ -4,18 +4,24 @@ pragma solidity ^0.8.0;
 import "./Proxy.sol";
 import "./interfaces/IProxy.sol";
 import "./interfaces/ILeverageNFT.sol";
+import "src/interfaces/ICentralRegistry.sol";
 
 
 contract Factory {
 
-    ILeverageNFT public leverageNFT;
-    address public master;
+    ICentralRegistry public centralRegistry;
 
     error unauthorized();
 
     modifier onlyMaster() {
-        if(msg.sender != master) revert();
+        address masterAddress = centralRegistry.protocols("MASTER");
+
+        if(msg.sender != masterAddress) revert();
         _;
+    }
+
+    constructor(address _centralRegistry) {
+        centralRegistry = ICentralRegistry(_centralRegistry);
     }
     
     function createProxy(
@@ -27,6 +33,8 @@ contract Factory {
         Proxy proxy = new Proxy(_implementation);
 
         proxyAddress = address(proxy);
+
+        ILeverageNFT leverageNFT = ILeverageNFT(centralRegistry.protocols("LEVERAGE_NFT"));
 
         tokenId = leverageNFT.mint(_to, proxyAddress);
 

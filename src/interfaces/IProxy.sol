@@ -12,4 +12,6 @@ interface IProxy {
         bytes calldata params
     ) external returns (bool);
 
+    function MARGIN_TYPE() external view returns (uint256);
+
 }

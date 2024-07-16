@@ -7,13 +7,9 @@ contract CentralRegistry {
 
     address public admin;
 
-    struct Implementation {
-        address implementation;
-        IMaster.PositionType positionType;
-        IMaster.MarginType marginType;
-    }
-
-    mapping(string => Implementation) public implementations;
+    mapping(string => address) public implementations;
+    mapping(string => address) public protocols;
+    mapping(string => address) public core;
 
     modifier onlyAdmin() {
         require(msg.sender == admin, "CentralRegistry: Only admin");
@@ -25,11 +21,19 @@ contract CentralRegistry {
     }
     
 
-    function addImplementation(string calldata _name, Implementation calldata _implementation) public onlyAdmin {
+    function addImplementation(string calldata _name, address _implementation) public onlyAdmin {
         implementations[_name] = _implementation;
     }
 
     function removeImplementation(string calldata _name) public onlyAdmin {
         delete implementations[_name];
+    }
+
+    function addProtocol(string calldata _name, address _protocol) public onlyAdmin {
+        protocols[_name] = _protocol;
+    }
+
+    function addCore(string calldata _name, address _core) public onlyAdmin {
+        protocols[_name] = _core;
     }
 }

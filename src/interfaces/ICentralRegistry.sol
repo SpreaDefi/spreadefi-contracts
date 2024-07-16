@@ -6,6 +6,10 @@ import "../interfaces/ICentralRegistry.sol";
 interface ICentralRegistry {
     function implementations(string calldata) external view returns (Implementation memory);
 
+    function protocols(string calldata) external view returns (address);
+
+    function core(string calldata) external view returns (address);
+
     struct Implementation {
         address implementation;
         PositionType positionType;
