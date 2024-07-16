@@ -2,32 +2,38 @@
 pragma solidity ^0.8.0;
 
 contract Proxy {
-    address public implementation;
+    address public immutable implementation;
 
     constructor(address _implementation) {
+        require(_implementation != address(0), "Invalid implementation address");
         implementation = _implementation;
     }
 
-    fallback() external payable {
-        address implementation_;
+    function _delegate(address impl) internal virtual {
         assembly {
-            // Load the implementation address from storage slot 0
-            implementation_ := sload(implementation.slot)
-        }
-        require(implementation_ != address(0), "Implementation address is zero");
 
-        assembly {
-            let ptr := mload(0x40)
-            calldatacopy(ptr, 0, calldatasize())
-            let result := delegatecall(gas(), implementation_, ptr, calldatasize(), 0, 0)
-            let size := returndatasize()
-            returndatacopy(ptr, 0, size)
+            calldatacopy(0, 0, calldatasize())
+
+            let result := delegatecall(gas(), impl, 0, calldatasize(), 0, 0)
+
+            returndatacopy(0, 0, returndatasize())
 
             switch result
-            case 0 { revert(ptr, size) }
-            default { return(ptr, size) }
+
+            case 0 {
+                revert(0, returndatasize())
+            }
+            default {
+                return(0, returndatasize())
+            }
         }
     }
 
-    receive() external payable {}
+    fallback() external payable virtual {
+        _delegate(implementation);
+    }
+
+    receive() external payable virtual {
+        _delegate(implementation);
+    }
 }

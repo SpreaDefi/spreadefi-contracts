@@ -30,7 +30,7 @@ contract Using_Proxy_Long_Quote_Odos_ZeroLend_Test is Test, IERC721Receiver {
 
     /* %%%%%%%%%%%%%%%% ODOS API VARIABLES %%%%%%%%%%%%%%%% */
 
-    bytes odosAdd = hex"83bd37f90001176211869ca2b568f2a7d4ee941e073a821ee1ff0001e5d7c2a44ffddf6b295a15c148167daaaf5cf34f0411e1a300080132ea28589ac2b0028f5c0001d804BA88371A3f00dDaCA03Cbc2b6C47F38105FC000000015615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f0000000003010203000a0101010201ff000000000000000000000000000000000000000000586733678b9ac9da43dd7cb83bbb41d23677dfc3176211869ca2b568f2a7d4ee941e073a821ee1ff000000000000000000000000000000000000000000000000";
+    bytes odosAdd = hex"83bd37f90001176211869ca2b568f2a7d4ee941e073a821ee1ff0001e5d7c2a44ffddf6b295a15c148167daaaf5cf34f0411e1a300080133f202fa26fe50028f5c0001d804BA88371A3f00dDaCA03Cbc2b6C47F38105FC000000014f81992FCe2E1846dD528eC0102e6eE1f61ed3e20000000004010205000a0100010201020000000a0101030401ff00000000000000000000006e9ad0b8a41e2c148e7b0385d3ecbfdb8a216a9b176211869ca2b568f2a7d4ee941e073a821ee1ff1947b87d35e9f1cd53cede1ad6f7be44c12212b8a219439258ca9da29e9cc4ce5596924745e12b9300000000000000000000000000000000";
 
 
     /* %%%%%%%%%%%%%%%% ODOS API VARIABLES %%%%%%%%%%%%%%%% */
@@ -41,7 +41,7 @@ contract Using_Proxy_Long_Quote_Odos_ZeroLend_Test is Test, IERC721Receiver {
         master = new Master(address(centralRegistry));
         factory = new Factory(address(centralRegistry));
         leveragedNFT = new LeveragedNFT(address(centralRegistry));
-        longQuoteOdosZerolend = new Long_Quote_Odos_Zerolend(address(centralRegistry));
+        longQuoteOdosZerolend = new Long_Quote_Odos_Zerolend();
 
         centralRegistry.addCore("MASTER", address(master));
         centralRegistry.addCore("FACTORY", address(factory));
@@ -50,9 +50,6 @@ contract Using_Proxy_Long_Quote_Odos_ZeroLend_Test is Test, IERC721Receiver {
         centralRegistry.addProtocol("ODOS_ROUTER", OdosRouterAddress);
         centralRegistry.addProtocol("ZEROLEND_POOL", zeroLendAddress);
 
-        address zeroLendPool = centralRegistry.protocols("ZEROLEND_POOL");
-        console.log("central registry address: %s", address(centralRegistry));
-        console.log("longQuoteOdosZerolend address: %s", address(longQuoteOdosZerolend));
     }
 
     function testCreatePosition() public {

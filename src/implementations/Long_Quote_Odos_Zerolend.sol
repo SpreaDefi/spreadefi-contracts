@@ -14,18 +14,14 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
 
     using SafeERC20 for IERC20;
 
-    ICentralRegistry public centralRegistry;
+    address public centralRegistryAddress;
 
     uint256 public constant MARGIN_TYPE = 0; // 0 for quote, 1 for base
 
-    bool initialized;
     uint256 tokenId; // NFT token ID that represents this position
 
     address public QUOTE_TOKEN;
     address public BASE_TOKEN;
-
-    uint256 public marginAmount;
-    uint256 public borrowAmount;
 
     enum Action {
         ADD,
@@ -39,21 +35,13 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
     event debugAddress(string, address);
     event debugString(string);
     event debugBytes(string, bytes);
-
-    constructor(address _centralRegistry) {
-        centralRegistry = ICentralRegistry(_centralRegistry);
-        emit debugAddress("Central Registry Address", address(centralRegistry));
-    }
     
-    function initialize(uint256 _tokenId, address _quoteToken, address _baseToken) external {
-        if(initialized) revert AlreadyInitialized();
+    function initialize(address _centralRegistry, uint256 _tokenId, address _quoteToken, address _baseToken) external {
+        centralRegistryAddress = _centralRegistry;
         tokenId = _tokenId;
         QUOTE_TOKEN = _quoteToken;
         BASE_TOKEN = _baseToken;
-        initialized = true;
     }
-
-
 
     // EXTERNAL FUNCTIONS
 
@@ -77,6 +65,8 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
 
         emit debugUint("Encoded data", 0);
 
+        ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
+
         emit debugAddress("centralRegistry Address", address(centralRegistry));
         
         address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
@@ -99,6 +89,7 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
         bytes memory data = abi.encode(action, _baseReduction, _odosTransactionData);
 
         // 1. Flash loan the _flashLoanAmount
+        ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
         address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
         IPool(poolAddress).flashLoanSimple(address(this), QUOTE_TOKEN, _flashLoanAmount, data, 0);
     }
@@ -114,6 +105,8 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
 
         bytes memory data = abi.encode(action, debtAmount, _odosTransactionData);
 
+        ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
+
         address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
         IPool(poolAddress).flashLoanSimple(address(this), QUOTE_TOKEN, debtAmount, data, 0);
     }
@@ -123,6 +116,7 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
 
     // VIEW FUNCTIONS
     function _getReserveData(address _asset) internal view returns (address, address){
+        ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
         address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
         IPool pool = IPool(poolAddress);
         DataTypes.ReserveData memory assetData = pool.getReserveData(_asset);
@@ -136,6 +130,8 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
         // Use a low-level call to execute the transaction
         emit debugString("Executing Odos transaction");
         emit debugBytes("Transaction data", transactionData);
+        ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
+
         address odosRouterAddress = centralRegistry.protocols("ODOS_ROUTER");
         (bool success, bytes memory returnData) = odosRouterAddress.call(transactionData);
         require(success, "Odos transaction execution failed");
@@ -155,9 +151,10 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
         baseOut = abi.decode(returnData, (uint256));
 
         // Quote balance after swap
-        uint256 quoteBalanceAfter = IERC20(BASE_TOKEN).balanceOf(address(this));
+        uint256 quoteBalanceAfter = IERC20(QUOTE_TOKEN).balanceOf(address(this));
 
-        quoteIn = quoteBalanceAfter - quoteBalanceBefore;
+
+        quoteIn = quoteBalanceBefore - quoteBalanceAfter;
 
         
     }
@@ -187,6 +184,8 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
 
         uint256 swapInAmount = _flashLoanAmount + marginAddAmount;
 
+        ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
+
         address odosRouterAddress = centralRegistry.protocols("ODOS_ROUTER");
 
         // 0. approve odos router to spend the quote token
@@ -199,6 +198,8 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
         // 2. Deposit the base token to the money market
         address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
         IPool pool = IPool(poolAddress);
+        // emit balance of base token
+        emit debugUint("Base token balance", IERC20(BASE_TOKEN).balanceOf(address(this)));
         IERC20(BASE_TOKEN).safeIncreaseAllowance(address(poolAddress), baseAmountOut);
         pool.supply(BASE_TOKEN, baseAmountOut, address(this), 0);
 
@@ -208,9 +209,6 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
         emit debugUint("Quote token balance", IERC20(QUOTE_TOKEN).balanceOf(address(this)));
         emit debugAddress("Quote token address", QUOTE_TOKEN);
 
-        // Accounting
-        marginAmount += marginAddAmount; // amount of quote token provided as margin, does not reflect the actual margin worth. only the amount provided
-        borrowAmount += baseAmountOut; // amount of base token borrowed, does not reflect the actual borrow amount if the position is partially liquidated
 
         IERC20(QUOTE_TOKEN).safeIncreaseAllowance(address(pool), totalDebt);
     }
@@ -227,6 +225,7 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
         emit debugUint("quote token balance", IERC20(QUOTE_TOKEN).balanceOf(address(this)));
         emit debugUint("flash loan amount", flashLoanAmount);
         emit debugUint("trying to increase allowance of debt token...",0);
+        ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
         address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
         IPool pool = IPool(poolAddress);
         IERC20(QUOTE_TOKEN).safeIncreaseAllowance(address(pool), flashLoanAmount);
@@ -266,6 +265,7 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
 
         emit debugUint("_closePosition", 0);
 
+        ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
         address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
         IPool pool = IPool(poolAddress);
 
@@ -311,6 +311,7 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
         address initiator,
         bytes calldata params
     ) external override returns (bool) {
+        ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
         address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
         IPool pool = IPool(poolAddress);
 
@@ -345,11 +346,13 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
 
     // FlashLoanSimpleReceiver
     function ADDRESSES_PROVIDER() external view override returns (IPoolAddressesProvider) {
+        ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
         address addressProviderAddress = centralRegistry.protocols("ZEROLEND_ADDRESSES_PROVIDER");
         return IPoolAddressesProvider(addressProviderAddress);
     }
 
     function POOL() external view override returns (IPool) {
+        ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
         address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
         return IPool(poolAddress);
     }
