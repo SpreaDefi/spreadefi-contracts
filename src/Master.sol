@@ -119,8 +119,11 @@ contract Master {
         IProxy(proxyAddress).addToPosition(_positionParams.collateralAmount, _positionParams.flashLoanAmount,_positionParams.pathDefinition);
     }
 
-    function removeFromPosition(uint256 _tokenId) onlyNFTOwner(_tokenId) public {
+    function removeFromPosition(uint256 _tokenId, uint256 _baseReductionAmount, uint256 _flashLoanAmount, bytes memory _transactionData) onlyNFTOwner(_tokenId) public {
+        ILeverageNFT leverageNFT = ILeverageNFT(centralRegistry.core("LEVERAGE_NFT"));
+        address proxyAddress = leverageNFT.tokenIdToProxy(_tokenId);
 
+        IProxy(proxyAddress).removeFromPosition(_baseReductionAmount, _flashLoanAmount, _transactionData);
     }
 
     function closePosition(uint256 _tokenId) onlyNFTOwner(_tokenId) public {}

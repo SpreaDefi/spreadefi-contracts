@@ -12,6 +12,11 @@ interface IProxy {
         bytes calldata params
     ) external returns (bool);
 
+    function removeFromPosition(
+            uint256 _baseReduction, 
+            uint256 _flashLoanAmount,
+            bytes calldata _odosTransactionData) external;
+
     function MARGIN_TYPE() external view returns (uint256);
 
     function QUOTE_TOKEN() external view returns (address);

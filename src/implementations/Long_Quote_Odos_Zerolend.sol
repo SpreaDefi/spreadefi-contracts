@@ -248,12 +248,17 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
         IERC20(BASE_TOKEN).safeIncreaseAllowance(odosRouterAddress, baseAmountUnlocked);
         (uint256 amountIn, uint256 amountOut) = _swapBaseForQuote( _transactionData);
 
+
         // 4. Approve the pool to transfer the necessary amount for the flash loan repayment
         if (amountOut > totalDebt) {
             IERC20(QUOTE_TOKEN).safeIncreaseAllowance(address(pool), amountOut);
+            emit debugUint("Amount out", amountOut);
             uint256 remainingBalance = amountOut - totalDebt;
             emit debugUint("Remaining balance", remainingBalance);
-            // IERC20(QUOTE_TOKEN).safeTransfer(msg.sender, remainingBalance);
+            emit debugUint("Total debt", totalDebt);
+            emit debugUint("quote balance", IERC20(QUOTE_TOKEN).balanceOf(address(this)));
+            emit debugAddress("this address", address(this));
+            IERC20(QUOTE_TOKEN).safeTransfer(msg.sender, remainingBalance);
         } 
     }
 

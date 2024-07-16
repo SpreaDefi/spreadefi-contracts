@@ -4,7 +4,7 @@ const axios = require('axios');
 const USDCAddress = "0x176211869cA2b568f2A7D4EE941E073a821EE1ff";
 const WETHAddress = "0xe5D7C2a44FfDDf6b295A15c148167daaAf5Cf34f";
 const LineaChainId = 59144;
-const userAddr = '0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f'; // Replace with the correct address
+const userAddr = '0x4f81992FCe2E1846dD528eC0102e6eE1f61ed3e2'; // Replace with the correct address
 
 // Function to get the quote and pathId
 async function getQuote() {
