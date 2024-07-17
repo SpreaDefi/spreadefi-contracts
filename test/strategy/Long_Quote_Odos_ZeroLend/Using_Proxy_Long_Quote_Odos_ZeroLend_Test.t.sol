@@ -30,10 +30,12 @@ contract Using_Proxy_Long_Quote_Odos_ZeroLend_Test is Test, IERC721Receiver {
 
     /* %%%%%%%%%%%%%%%% ODOS API VARIABLES %%%%%%%%%%%%%%%% */
 
-    bytes odosAdd = hex"83bd37f90001176211869ca2b568f2a7d4ee941e073a821ee1ff0001e5d7c2a44ffddf6b295a15c148167daaaf5cf34f0411e1a3000801353764b96780e0028f5c0001d804BA88371A3f00dDaCA03Cbc2b6C47F38105FC000000014f81992FCe2E1846dD528eC0102e6eE1f61ed3e20000000003010203000a0101010201ff000000000000000000000000000000000000000000586733678b9ac9da43dd7cb83bbb41d23677dfc3176211869ca2b568f2a7d4ee941e073a821ee1ff000000000000000000000000000000000000000000000000";
+    bytes odosAdd = hex"83bd37f90001176211869ca2b568f2a7d4ee941e073a821ee1ff0001e5d7c2a44ffddf6b295a15c148167daaaf5cf34f0411e1a30008013287244d4de500028f5c0001d804BA88371A3f00dDaCA03Cbc2b6C47F38105FC000000014f81992FCe2E1846dD528eC0102e6eE1f61ed3e20000000003010203000a0101010201ff000000000000000000000000000000000000000000586733678b9ac9da43dd7cb83bbb41d23677dfc3176211869ca2b568f2a7d4ee941e073a821ee1ff000000000000000000000000000000000000000000000000";
 
-    bytes odosRemove = hex'83bd37f90001e5d7c2a44ffddf6b295a15c148167daaaf5cf34f0001176211869ca2b568f2a7d4ee941e073a821ee1ff0738d7ea4c6800000403494862028f5c0001d804BA88371A3f00dDaCA03Cbc2b6C47F38105FC000000014f81992FCe2E1846dD528eC0102e6eE1f61ed3e20000000003010203000a0101010200ff000000000000000000000000000000000000000000c48622190a6b91d64ee7459c62fade9abe61b48ae5d7c2a44ffddf6b295a15c148167daaaf5cf34f000000000000000000000000000000000000000000000000';
+    bytes odosRemove = hex'83bd37f90001e5d7c2a44ffddf6b295a15c148167daaaf5cf34f0001176211869ca2b568f2a7d4ee941e073a821ee1ff0738d7ea4c68000004035123f6028f5c0001d804BA88371A3f00dDaCA03Cbc2b6C47F38105FC000000014f81992FCe2E1846dD528eC0102e6eE1f61ed3e20000000003010203000a0101010200ff000000000000000000000000000000000000000000d5539d0360438a66661148c633a9f0965e482845e5d7c2a44ffddf6b295a15c148167daaaf5cf34f000000000000000000000000000000000000000000000000';
 
+    bytes odosClose = hex'83bd37f90001e5d7c2a44ffddf6b295a15c148167daaaf5cf34f0001176211869ca2b568f2a7d4ee941e073a821ee1ff080132584c89e56f4d0411e00b82028f5c0001d804BA88371A3f00dDaCA03Cbc2b6C47F38105FC000000014f81992FCe2E1846dD528eC0102e6eE1f61ed3e20000000003010203000a0101010200ff000000000000000000000000000000000000000000586733678b9ac9da43dd7cb83bbb41d23677dfc3e5d7c2a44ffddf6b295a15c148167daaaf5cf34f000000000000000000000000000000000000000000000000';
+    
     /* %%%%%%%%%%%%%%%% ODOS API VARIABLES %%%%%%%%%%%%%%%% */
 
     function setUp() public {
@@ -111,6 +113,37 @@ contract Using_Proxy_Long_Quote_Odos_ZeroLend_Test is Test, IERC721Receiver {
         uint256 flashLoanAmount = 55000000; // should be the price of the base reduction minus the flash loan premium
 
         IMaster(address(master)).removeFromPosition(0, baseReduction, flashLoanAmount, odosRemove);
+    }
+
+
+    function testClosePosition() public {
+
+        deal(USDCAddress, (address(this)), 100 * 10**6, true);
+
+        IERC20(USDCAddress).approve(address(master), 100 * 10**6);
+
+        IMaster.NewPositionParams memory params = IMaster.NewPositionParams({
+            implementation: address(longQuoteOdosZerolend),
+            quoteToken: USDCAddress,
+            baseToken: WETHAddress
+        });
+
+        IMaster(address(master)).createPosition(params);
+
+        uint256 nftBalance = leveragedNFT.balanceOf(address(this));
+
+        assertEq(nftBalance, 1);
+
+        IMaster.PositionParams memory position = IMaster.PositionParams({
+            collateralAmount: 100 * 10**6,
+            flashLoanAmount: 200 * 10**6,
+            pathDefinition: odosAdd
+        });
+
+        IMaster(address(master)).addToPosition(0, position);
+
+        IMaster(address(master)).closePosition(0, odosClose);
+
     }
 
 

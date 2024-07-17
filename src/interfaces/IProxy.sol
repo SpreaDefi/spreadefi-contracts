@@ -17,6 +17,8 @@ interface IProxy {
             uint256 _flashLoanAmount,
             bytes calldata _odosTransactionData) external;
 
+    function closePosition(bytes memory _odosTransactionData) external;
+
     function MARGIN_TYPE() external view returns (uint256);
 
     function QUOTE_TOKEN() external view returns (address);

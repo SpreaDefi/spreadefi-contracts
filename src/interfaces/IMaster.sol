@@ -29,4 +29,7 @@ interface IMaster {
     function addToPosition(uint256 _tokenId, PositionParams memory params) external;
 
     function removeFromPosition(uint256 _tokenId, uint256 _baseReductionAmount, uint256 _flashLoanAmount, bytes memory _transactionData) external;
+
+    function closePosition(uint256 _tokenId, bytes memory _transactionData) external;
+    
 }

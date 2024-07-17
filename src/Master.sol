@@ -85,11 +85,6 @@ contract Master {
 
         (tokenId, proxyAddress) = factory.createProxy(msg.sender, implementationAddress, quoteToken, baseToken);
 
-        // marginToken.safeIncreaseAllowance(proxyAddress, collateralAmount);
-
-        // marginToken.safeIncreaseAllowance(proxyAddress, collateralAmount);
-
-        // IProxy(proxyAddress).addToPosition(collateralAmount, params.flashLoanAmount, params.minTokenOut, params.pathDefinition);
     
     }
 
@@ -126,5 +121,13 @@ contract Master {
         IProxy(proxyAddress).removeFromPosition(_baseReductionAmount, _flashLoanAmount, _transactionData);
     }
 
-    function closePosition(uint256 _tokenId) onlyNFTOwner(_tokenId) public {}
+    function closePosition(uint256 _tokenId, bytes memory _transactionData) onlyNFTOwner(_tokenId) public {
+
+        ILeverageNFT leverageNFT = ILeverageNFT(centralRegistry.core("LEVERAGE_NFT"));
+        address proxyAddress = leverageNFT.tokenIdToProxy(_tokenId);
+
+        IProxy(proxyAddress).closePosition(_transactionData);
+
+
+    }
 }
