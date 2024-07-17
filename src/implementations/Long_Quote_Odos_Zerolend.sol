@@ -35,12 +35,37 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
     event debugAddress(string, address);
     event debugString(string);
     event debugBytes(string, bytes);
+
+    modifier onlyFactory() {
+        _;
+        address factoryAddress = ICentralRegistry(centralRegistryAddress).core("FACTORY");
+        if (msg.sender != factoryAddress) revert();
+    }
+
+    modifier onlyMaster() {
+        address masterAddress = ICentralRegistry(centralRegistryAddress).core("MASTER");
+        if (msg.sender != masterAddress) revert();
+
+        _;
+    }
+
+    modifier onlyZerolendPool() {
+        address poolAddress = ICentralRegistry(centralRegistryAddress).protocols("ZEROLEND_POOL");
+        if (msg.sender != poolAddress) revert();
+        _;
+    }
+
+    modifier onlySelf(address _initiator) {
+        if (address(this) != _initiator) revert();
+        _;
+    }
     
-    function initialize(address _centralRegistry, uint256 _tokenId, address _quoteToken, address _baseToken) external {
+    function initialize(address _centralRegistry, uint256 _tokenId, address _quoteToken, address _baseToken) onlyFactory external {
         centralRegistryAddress = _centralRegistry;
         tokenId = _tokenId;
         QUOTE_TOKEN = _quoteToken;
         BASE_TOKEN = _baseToken;
+
     }
 
     // EXTERNAL FUNCTIONS
@@ -49,7 +74,7 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
         uint256 _marginAmount,
         uint256 _flashLoanAmount,
         bytes memory _odosTransactionData
-        ) external {
+        ) onlyMaster external {
 
         emit debugBytes("Input Transaction Data", _odosTransactionData);
 
@@ -82,7 +107,7 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
     function removeFromPosition(
         uint256 _baseReduction, 
         uint256 _flashLoanAmount,
-        bytes calldata _odosTransactionData) external {
+        bytes calldata _odosTransactionData) onlyMaster external {
 
         Action action = Action.REMOVE;
 
@@ -96,7 +121,7 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
 
     function closePosition(
         bytes calldata _odosTransactionData
-    ) external {
+    ) onlyMaster external {
         // get the balance of the variable debt token
         (, address variableDebtTokenAddress) = _getReserveData(QUOTE_TOKEN);
         uint256 debtAmount = IERC20(variableDebtTokenAddress).balanceOf(address(this));
@@ -315,13 +340,7 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
         uint256 premium,
         address initiator,
         bytes calldata params
-    ) external override returns (bool) {
-        ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
-        address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
-        IPool pool = IPool(poolAddress);
-
-        require (msg.sender == poolAddress, "Caller is not the pool");
-        require(initiator == address(this), "Initiator is not this contract");
+    ) onlyZerolendPool onlySelf(initiator) external override returns (bool) {
 
         uint256 totalDebt = flashLoanAmount + premium;
         emit debugUint("totalDebt", totalDebt);
@@ -344,7 +363,7 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
             _closePosition(flashLoanAmount, odosTransactionData_, totalDebt);
         }
 
-        IERC20(QUOTE_TOKEN).safeIncreaseAllowance(address(pool), totalDebt);
+        IERC20(QUOTE_TOKEN).safeIncreaseAllowance(msg.sender, totalDebt);
 
         return true;
     }
