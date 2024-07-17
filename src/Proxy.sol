@@ -1,14 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+/// @title Proxy Contract
+/// @notice This contract delegates all calls to an implementation contract.
+/// @dev This contract uses the EVM's delegatecall to forward calls to the implementation.
 contract Proxy {
+
+    /// @notice The address of the implementation contract
     address public immutable implementation;
 
+    /// @notice Constructor to set the implementation address
+    /// @param _implementation The address of the implementation contract
     constructor(address _implementation) {
         require(_implementation != address(0), "Invalid implementation address");
         implementation = _implementation;
     }
 
+    /// @notice Internal function to delegate calls to the implementation contract
+    /// @dev Uses inline assembly to perform the delegatecall
+    /// @param impl The address of the implementation contract
     function _delegate(address impl) internal virtual {
         assembly {
 
@@ -29,10 +39,14 @@ contract Proxy {
         }
     }
 
+   /// @notice Fallback function to delegate all calls to the implementation contract
+    /// @dev This function will catch any call to the contract and forward it to the implementation
     fallback() external payable virtual {
         _delegate(implementation);
     }
 
+    /// @notice Receive function to handle plain Ether transfers
+    /// @dev This function will catch any plain Ether transfers and forward them to the implementation
     receive() external payable virtual {
         _delegate(implementation);
     }

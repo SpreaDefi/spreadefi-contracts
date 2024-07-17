@@ -11,49 +11,54 @@ import "src/interfaces/IERC721A.sol";
 import "src/interfaces/ICentralRegistry.sol";
 import {DataTypes} from "src/interfaces/external/zerolend/DataTypes.sol";
 
+/// @title Long Quote Odos Zerolend Strategy Contract
+/// @notice Implements a leveraged long position strategy with quote token as margin using flash loans and Odos swaps
+/// @dev This contract interacts with the ZeroLend protocol and Odos router for executing leveraged trades
+
 contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
 
     using SafeERC20 for IERC20;
 
-    /* %%%%%%%%%%%%% STORAGE VARIABLES %%%%%%%%%%%%% */
-
+    /// @notice The central registry contract address
     address public centralRegistryAddress;
 
-    uint256 public constant MARGIN_TYPE = 0; // 0 for quote, 1 for base
+    /// @notice Constant representing the margin type (0 for quote, 1 for base)
+    uint256 public constant MARGIN_TYPE = 0;
 
-    uint256 tokenId; // NFT token ID that represents this position
+    /// @notice The token ID representing this position
+    uint256 tokenId;
 
+    /// @notice The address of the quote token
     address public QUOTE_TOKEN;
+
+    /// @notice The address of the base token
     address public BASE_TOKEN;
 
-    /* %%%%%%%%%%%%% DATA STRUCTURES %%%%%%%%%%%%% */
-
+    /// @notice Enumeration for different actions in the strategy
     enum Action {
         ADD,
         REMOVE,
         CLOSE
     }
 
-    /* %%%%%%%%%%%%% ERRORS %%%%%%%%%%%%% */
-
+    /// @notice Errors for the strategy contract
     error AlreadyInitialized();
     error Unauthorized();
 
-    /* %%%%%%%%%%%%% EVENTS %%%%%%%%%%%%% */
-
+    /// @notice Events for debugging purposes
     event debugUint(string, uint256);
     event debugAddress(string, address);
     event debugString(string);
     event debugBytes(string, bytes);
 
-    /* %%%%%%%%%%%%% MODIFIERS %%%%%%%%%%%%% */
-
+   /// @dev Modifier to restrict access to the factory contract
     modifier onlyFactory() {
         _;
         address factoryAddress = ICentralRegistry(centralRegistryAddress).core("FACTORY");
         if (msg.sender != factoryAddress) revert Unauthorized();
     }
 
+    /// @dev Modifier to restrict access to the master contract
     modifier onlyMaster() {
         address masterAddress = ICentralRegistry(centralRegistryAddress).core("MASTER");
         if (msg.sender != masterAddress) revert Unauthorized();
@@ -61,19 +66,25 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
         _;
     }
 
+    /// @dev Modifier to restrict access to the Zerolend pool
     modifier onlyZerolendPool() {
         address poolAddress = ICentralRegistry(centralRegistryAddress).protocols("ZEROLEND_POOL");
         if (msg.sender != poolAddress) revert Unauthorized();
         _;
     }
 
+    /// @dev Modifier to restrict access to the contract itself
     modifier onlySelf(address _initiator) {
         if (address(this) != _initiator) revert Unauthorized();
         _;
     }
 
-    /* %%%%%%%%%%%%% INITIALIZATION %%%%%%%%%%%%% */
-    
+    /// @notice Initializes the strategy with the central registry address, token ID, quote token, and base token
+    /// @dev This function can only be called by the factory contract
+    /// @param _centralRegistry The address of the central registry contract
+    /// @param _tokenId The ID of the NFT token representing the position
+    /// @param _quoteToken The address of the quote token
+    /// @param _baseToken The address of the base tokens
     function initialize(address _centralRegistry, uint256 _tokenId, address _quoteToken, address _baseToken) onlyFactory external {
         centralRegistryAddress = _centralRegistry;
         tokenId = _tokenId;
@@ -82,8 +93,11 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
 
     }
 
-    /* %%%%%%%%%%%%% EXTERNAL FUNCTIONS %%%%%%%%%%%%% */
-
+    /// @notice Adds to the leveraged position using a flash loan and Odos transaction
+    /// @dev This function can only be called by the master contract
+    /// @param _marginAmount The amount of margin to add
+    /// @param _flashLoanAmount The amount of flash loan to use
+    /// @param _odosTransactionData The transaction data for the Odos swap
     function addToPosition(
         uint256 _marginAmount,
         uint256 _flashLoanAmount,
@@ -118,6 +132,11 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
         
     }
 
+    /// @notice Removes from the leveraged position using a flash loan and Odos transaction
+    /// @dev This function can only be called by the master contract
+    /// @param _baseReduction The amount of base token to reduce
+    /// @param _flashLoanAmount The amount of flash loan to use
+    /// @param _odosTransactionData The transaction data for the Odos swap
     function removeFromPosition(
         uint256 _baseReduction, 
         uint256 _flashLoanAmount,
@@ -133,6 +152,9 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
         IPool(poolAddress).flashLoanSimple(address(this), QUOTE_TOKEN, _flashLoanAmount, data, 0);
     }
 
+    /// @notice Closes the leveraged position using a flash loan and Odos transaction
+    /// @dev This function can only be called by the master contract
+    /// @param _odosTransactionData The transaction data for the Odos swap
     function closePosition(
         bytes calldata _odosTransactionData
     ) onlyMaster external {
@@ -150,6 +172,14 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
         IPool(poolAddress).flashLoanSimple(address(this), QUOTE_TOKEN, debtAmount, data, 0);
     }
 
+    /// @notice Executes the operation called by the flash loan pool
+    /// @dev This function can only be called by the Zerolend pool
+    /// @param asset The address of the asset being flash loaned
+    /// @param flashLoanAmount The amount of the flash loan
+    /// @param premium The premium to be paid on the flash loan
+    /// @param initiator The initiator of the flash loan
+    /// @param params The additional parameters passed during the flash loan call
+    /// @return bool indicating successful execution
     function executeOperation(
         address asset,
         uint256 flashLoanAmount,
@@ -185,8 +215,10 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
     }
 
 
-    /* %%%%%%%%%%%%% INTERNAL FUNCTIONS %%%%%%%%%%%%% */
-
+    /// @notice Executes the Odos transaction using the provided data
+    /// @dev Uses a low-level call to execute the transaction
+    /// @param transactionData The transaction data for the Odos swap
+    /// @return bytes The return data from the Odos transaction
     function _executeOdosTransaction(bytes memory transactionData) internal returns (bytes memory) {
         // Use a low-level call to execute the transaction
         emit debugString("Executing Odos transaction");
@@ -200,7 +232,11 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
         return returnData;
 
     }
-    
+
+    /// @notice Swaps the quote token for the base token using Odos
+    /// @param _transactionData The transaction data for the Odos swap
+    /// @return quoteIn The amount of quote token swapped in
+    /// @return baseOut The amount of base token received
     function _swapQuoteForBase(
         bytes memory _transactionData
     ) internal returns (uint256 quoteIn, uint256 baseOut) {
@@ -220,6 +256,10 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
         
     }
 
+    /// @notice Swaps the base token for the quote token using Odos
+    /// @param _transactionData The transaction data for the Odos swap
+    /// @return baseIn The amount of base token swapped in
+    /// @return quoteOut The amount of quote token received
     function _swapBaseForQuote(
         bytes memory _transactionData
     ) internal returns (uint256 baseIn, uint256 quoteOut) {
@@ -236,6 +276,11 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
         baseIn = baseBalanceBefore - baseBalanceAfter;
     }
 
+    /// @notice Adds to the leveraged position internally
+    /// @param _flashLoanAmount The amount of flash loan to use
+    /// @param marginAddAmount The amount of margin to add
+    /// @param _transactionData The transaction data for the Odos swap
+    /// @param totalDebt The total debt to be repaid
     function _addPosition(
         uint256 _flashLoanAmount,
         uint256 marginAddAmount,
@@ -274,6 +319,11 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
         IERC20(QUOTE_TOKEN).safeIncreaseAllowance(address(pool), totalDebt);
     }
 
+    /// @notice Adds to the leveraged position internally
+    /// @param _flashLoanAmount The amount of flash loan to use
+    /// @param marginAddAmount The amount of margin to add
+    /// @param _transactionData The transaction data for the Odos swap
+    /// @param totalDebt The total debt to be repaid
     function _removePosition(
         uint256 flashLoanAmount,
         uint256 baseReductionAmount_,
@@ -325,6 +375,10 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
         } 
     }
 
+    /// @notice Closes the leveraged position internally
+    /// @param _flashLoanAmount The amount of flash loan to use
+    /// @param _transactionData The transaction data for the Odos swap
+    /// @param totalDebt The total debt to be repaid
     function _closePosition(
         uint256 _flashLoanAmount,
         bytes memory _transactionData,
@@ -373,8 +427,9 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
     }
 
     
-    /* %%%%%%%%%%%%% VIEW FUNCTIONS %%%%%%%%%%%%% */
-
+    /// @notice Retrieves reserve data for a given asset
+    /// @param _asset The address of the asset
+    /// @return address of the aToken and the variable debt token
     function _getReserveData(address _asset) internal view returns (address, address){
         ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
         address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
@@ -385,12 +440,16 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
         return (aTokenAddress, variableDebtTokenAddress);
     }
 
+    /// @notice Returns the pool addresses provider
+    /// @return IPoolAddressesProvider The address of the pool addresses provider
    function ADDRESSES_PROVIDER() external view override returns (IPoolAddressesProvider) {
         ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
         address addressProviderAddress = centralRegistry.protocols("ZEROLEND_ADDRESSES_PROVIDER");
         return IPoolAddressesProvider(addressProviderAddress);
     }
 
+    /// @notice Returns the pool addresses provider
+    /// @return IPoolAddressesProvider The address of the pool addresses provider
     function POOL() external view override returns (IPool) {
         ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
         address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
