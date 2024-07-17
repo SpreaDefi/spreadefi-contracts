@@ -7,12 +7,15 @@ import "src/interfaces/external/zerolend/IPoolAddressProvider.sol";
 import "src/interfaces/external/zerolend/IPool.sol";
 import "src/interfaces/external/odos/IOdosRouterV2.sol";
 import "src/interfaces/ILeverageNFT.sol";
+import "src/interfaces/IERC721A.sol";
 import "src/interfaces/ICentralRegistry.sol";
 import {DataTypes} from "src/interfaces/external/zerolend/DataTypes.sol";
 
 contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
 
     using SafeERC20 for IERC20;
+
+    /* %%%%%%%%%%%%% STORAGE VARIABLES %%%%%%%%%%%%% */
 
     address public centralRegistryAddress;
 
@@ -23,42 +26,53 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
     address public QUOTE_TOKEN;
     address public BASE_TOKEN;
 
+    /* %%%%%%%%%%%%% DATA STRUCTURES %%%%%%%%%%%%% */
+
     enum Action {
         ADD,
         REMOVE,
         CLOSE
     }
 
+    /* %%%%%%%%%%%%% ERRORS %%%%%%%%%%%%% */
+
     error AlreadyInitialized();
+    error Unauthorized();
+
+    /* %%%%%%%%%%%%% EVENTS %%%%%%%%%%%%% */
 
     event debugUint(string, uint256);
     event debugAddress(string, address);
     event debugString(string);
     event debugBytes(string, bytes);
 
+    /* %%%%%%%%%%%%% MODIFIERS %%%%%%%%%%%%% */
+
     modifier onlyFactory() {
         _;
         address factoryAddress = ICentralRegistry(centralRegistryAddress).core("FACTORY");
-        if (msg.sender != factoryAddress) revert();
+        if (msg.sender != factoryAddress) revert Unauthorized();
     }
 
     modifier onlyMaster() {
         address masterAddress = ICentralRegistry(centralRegistryAddress).core("MASTER");
-        if (msg.sender != masterAddress) revert();
+        if (msg.sender != masterAddress) revert Unauthorized();
 
         _;
     }
 
     modifier onlyZerolendPool() {
         address poolAddress = ICentralRegistry(centralRegistryAddress).protocols("ZEROLEND_POOL");
-        if (msg.sender != poolAddress) revert();
+        if (msg.sender != poolAddress) revert Unauthorized();
         _;
     }
 
     modifier onlySelf(address _initiator) {
-        if (address(this) != _initiator) revert();
+        if (address(this) != _initiator) revert Unauthorized();
         _;
     }
+
+    /* %%%%%%%%%%%%% INITIALIZATION %%%%%%%%%%%%% */
     
     function initialize(address _centralRegistry, uint256 _tokenId, address _quoteToken, address _baseToken) onlyFactory external {
         centralRegistryAddress = _centralRegistry;
@@ -68,7 +82,7 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
 
     }
 
-    // EXTERNAL FUNCTIONS
+    /* %%%%%%%%%%%%% EXTERNAL FUNCTIONS %%%%%%%%%%%%% */
 
     function addToPosition(
         uint256 _marginAmount,
@@ -136,20 +150,42 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
         IPool(poolAddress).flashLoanSimple(address(this), QUOTE_TOKEN, debtAmount, data, 0);
     }
 
-   // INTERNAL FUNCTIONS
+    function executeOperation(
+        address asset,
+        uint256 flashLoanAmount,
+        uint256 premium,
+        address initiator,
+        bytes calldata params
+    ) onlyZerolendPool onlySelf(initiator) external override returns (bool) {
 
+        uint256 totalDebt = flashLoanAmount + premium;
+        emit debugUint("totalDebt", totalDebt);
+        
+        (Action action, uint256 marginAddedOrBaseReductionAmount_, bytes memory odosTransactionData_) = abi.decode(params, (Action, uint256, bytes));
 
-    // VIEW FUNCTIONS
-    function _getReserveData(address _asset) internal view returns (address, address){
-        ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
-        address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
-        IPool pool = IPool(poolAddress);
-        DataTypes.ReserveData memory assetData = pool.getReserveData(_asset);
-        address aTokenAddress = assetData.aTokenAddress;
-        address variableDebtTokenAddress = assetData.variableDebtTokenAddress;
-        return (aTokenAddress, variableDebtTokenAddress);
+        if (action == Action.ADD) {
+
+        emit debugUint("is add", 0);
+
+            _addPosition(flashLoanAmount, marginAddedOrBaseReductionAmount_,odosTransactionData_, totalDebt);
+
+        } else if (action == Action.REMOVE) {
+            emit debugUint ("is remove", 0);
+            
+            _removePosition(flashLoanAmount, marginAddedOrBaseReductionAmount_, odosTransactionData_, totalDebt);
+        }
+            else if (action == Action.CLOSE) {
+            emit debugUint ("is close", 2);
+            _closePosition(flashLoanAmount, odosTransactionData_, totalDebt);
+        }
+
+        IERC20(QUOTE_TOKEN).safeIncreaseAllowance(msg.sender, totalDebt);
+
+        return true;
     }
 
+
+    /* %%%%%%%%%%%%% INTERNAL FUNCTIONS %%%%%%%%%%%%% */
 
     function _executeOdosTransaction(bytes memory transactionData) internal returns (bytes memory) {
         // Use a low-level call to execute the transaction
@@ -283,7 +319,9 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
             emit debugUint("Total debt", totalDebt);
             emit debugUint("quote balance", IERC20(QUOTE_TOKEN).balanceOf(address(this)));
             emit debugAddress("this address", address(this));
-            IERC20(QUOTE_TOKEN).safeTransfer(msg.sender, remainingBalance);
+            IERC721A leverageNFT = IERC721A(ICentralRegistry(centralRegistryAddress).core("LEVERAGE_NFT"));
+            address NFTOwner = leverageNFT.ownerOf(tokenId);
+            IERC20(QUOTE_TOKEN).safeTransfer(NFTOwner, remainingBalance);
         } 
     }
 
@@ -328,48 +366,26 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
             IERC20(QUOTE_TOKEN).safeIncreaseAllowance(address(pool), amountOut);
             uint256 remainingBalance = amountOut - totalDebt;
             emit debugUint("Remaining balance", remainingBalance);
-            // IERC20(QUOTE_TOKEN).safeTransfer(msg.sender, remainingBalance);
+            IERC721A leverageNFT = IERC721A(ICentralRegistry(centralRegistryAddress).core("LEVERAGE_NFT"));
+            address NFTOwner = leverageNFT.ownerOf(tokenId);
+            IERC20(QUOTE_TOKEN).safeTransfer(NFTOwner, remainingBalance);
         } 
     }
 
-    // FLASH LOAN CALLBACK
+    
+    /* %%%%%%%%%%%%% VIEW FUNCTIONS %%%%%%%%%%%%% */
 
-    function executeOperation(
-        address asset,
-        uint256 flashLoanAmount,
-        uint256 premium,
-        address initiator,
-        bytes calldata params
-    ) onlyZerolendPool onlySelf(initiator) external override returns (bool) {
-
-        uint256 totalDebt = flashLoanAmount + premium;
-        emit debugUint("totalDebt", totalDebt);
-        
-        (Action action, uint256 marginAddedOrBaseReductionAmount_, bytes memory odosTransactionData_) = abi.decode(params, (Action, uint256, bytes));
-
-        if (action == Action.ADD) {
-
-        emit debugUint("is add", 0);
-
-            _addPosition(flashLoanAmount, marginAddedOrBaseReductionAmount_,odosTransactionData_, totalDebt);
-
-        } else if (action == Action.REMOVE) {
-            emit debugUint ("is remove", 0);
-            
-            _removePosition(flashLoanAmount, marginAddedOrBaseReductionAmount_, odosTransactionData_, totalDebt);
-        }
-            else if (action == Action.CLOSE) {
-            emit debugUint ("is close", 2);
-            _closePosition(flashLoanAmount, odosTransactionData_, totalDebt);
-        }
-
-        IERC20(QUOTE_TOKEN).safeIncreaseAllowance(msg.sender, totalDebt);
-
-        return true;
+    function _getReserveData(address _asset) internal view returns (address, address){
+        ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
+        address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
+        IPool pool = IPool(poolAddress);
+        DataTypes.ReserveData memory assetData = pool.getReserveData(_asset);
+        address aTokenAddress = assetData.aTokenAddress;
+        address variableDebtTokenAddress = assetData.variableDebtTokenAddress;
+        return (aTokenAddress, variableDebtTokenAddress);
     }
 
-    // FlashLoanSimpleReceiver
-    function ADDRESSES_PROVIDER() external view override returns (IPoolAddressesProvider) {
+   function ADDRESSES_PROVIDER() external view override returns (IPoolAddressesProvider) {
         ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
         address addressProviderAddress = centralRegistry.protocols("ZEROLEND_ADDRESSES_PROVIDER");
         return IPoolAddressesProvider(addressProviderAddress);
