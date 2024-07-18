@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "src/libraries/openzeppelin/token/SafeERC20.sol";
+import "./Shared_Storage.sol";
 import "src/interfaces/external/zerolend/IFlashLoanSimpleReceiver.sol";
 import "src/interfaces/external/zerolend/IPoolAddressProvider.sol";
 import "src/interfaces/external/zerolend/IPool.sol";
@@ -15,24 +16,9 @@ import {DataTypes} from "src/interfaces/external/zerolend/DataTypes.sol";
 /// @notice Implements a leveraged long position strategy with quote token as margin using flash loans and Odos swaps
 /// @dev This contract interacts with the ZeroLend protocol and Odos router for executing leveraged trades
 
-contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
+contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, SharedStorage {
 
     using SafeERC20 for IERC20;
-
-    /// @notice The central registry contract address
-    address public centralRegistryAddress;
-
-    /// @notice Constant representing the margin type (0 for quote, 1 for base)
-    uint256 public constant MARGIN_TYPE = 0;
-
-    /// @notice The token ID representing this position
-    uint256 tokenId;
-
-    /// @notice The address of the quote token
-    address public QUOTE_TOKEN;
-
-    /// @notice The address of the base token
-    address public BASE_TOKEN;
 
     /// @notice Enumeration for different actions in the strategy
     enum Action {
@@ -278,17 +264,17 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
 
     /// @notice Adds to the leveraged position internally
     /// @param _flashLoanAmount The amount of flash loan to use
-    /// @param marginAddAmount The amount of margin to add
+    /// @param _marginAddAmount The amount of margin to add
     /// @param _transactionData The transaction data for the Odos swap
-    /// @param totalDebt The total debt to be repaid
+    /// @param _totalDebt The total debt to be repaid
     function _addPosition(
         uint256 _flashLoanAmount,
-        uint256 marginAddAmount,
+        uint256 _marginAddAmount,
         bytes memory _transactionData,
-        uint256 totalDebt
+        uint256 _totalDebt
     ) internal {
 
-        uint256 swapInAmount = _flashLoanAmount + marginAddAmount;
+        uint256 swapInAmount = _flashLoanAmount + _marginAddAmount;
 
         ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
 
@@ -299,7 +285,7 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
 
         // 1. Swap the flash loaned (quote) amount + margin (quote) for the base token
         // IERC20(QUOTE_TOKEN).safeIncreaseAllowance(odosRouterAddress, tokenInAmount);
-        (uint256 marginAmountIn,uint256 baseAmountOut) = _swapQuoteForBase(_transactionData);
+        (uint256 _marginAmountIn,uint256 baseAmountOut) = _swapQuoteForBase(_transactionData);
 
         // 2. Deposit the base token to the money market
         address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
@@ -310,66 +296,67 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
         pool.supply(BASE_TOKEN, baseAmountOut, address(this), 0);
 
         // 3. Borrow the money market borrow amount
-        pool.borrow(QUOTE_TOKEN, totalDebt, 2, 0, address(this));
+        pool.borrow(QUOTE_TOKEN, _totalDebt, 2, 0, address(this));
 
         emit debugUint("Quote token balance", IERC20(QUOTE_TOKEN).balanceOf(address(this)));
         emit debugAddress("Quote token address", QUOTE_TOKEN);
 
 
-        IERC20(QUOTE_TOKEN).safeIncreaseAllowance(address(pool), totalDebt);
+        IERC20(QUOTE_TOKEN).safeIncreaseAllowance(address(pool), _totalDebt);
     }
 
-    /// @notice Adds to the leveraged position internally
+    /// @notice Removes from the leveraged position internally
     /// @param _flashLoanAmount The amount of flash loan to use
-    /// @param marginAddAmount The amount of margin to add
+    /// @param _baseReductionAmount The amount of base token to reduce
     /// @param _transactionData The transaction data for the Odos swap
-    /// @param totalDebt The total debt to be repaid
+    /// @param _totalDebt The total debt to be repaid
     function _removePosition(
-        uint256 flashLoanAmount,
-        uint256 baseReductionAmount_,
+        uint256 _flashLoanAmount,
+        uint256 _baseReductionAmount,
         bytes memory _transactionData,
-        uint256 totalDebt
+        uint256 _totalDebt
     ) internal {
         // 0. Get reserve data
         
         // 1. Repay part of the (QUOTE) borrowed amount to unlock collateral (BASE)
         emit debugUint("quote token balance", IERC20(QUOTE_TOKEN).balanceOf(address(this)));
-        emit debugUint("flash loan amount", flashLoanAmount);
+        emit debugUint("flash loan amount", _flashLoanAmount);
         emit debugUint("trying to increase allowance of debt token...",0);
         ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
         address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
         IPool pool = IPool(poolAddress);
-        IERC20(QUOTE_TOKEN).safeIncreaseAllowance(address(pool), flashLoanAmount);
+        IERC20(QUOTE_TOKEN).safeIncreaseAllowance(poolAddress, _flashLoanAmount);
         // IERC20(quoteVariableDebtTokenAddress).safeIncreaseAllowance(address(pool), flashLoanAmount);
         emit debugUint("Trying to repay...", 0);
 
-        pool.repay(QUOTE_TOKEN, flashLoanAmount, 2, address(this));
+        pool.repay(QUOTE_TOKEN, _flashLoanAmount, 2, address(this));
 
         // 2. Withdraw the base token that was unlocked
         (address baseAtokenAddress,) = _getReserveData(BASE_TOKEN);
 
-        IERC20(baseAtokenAddress).safeIncreaseAllowance(address(pool), baseReductionAmount_);
+        IERC20(baseAtokenAddress).safeIncreaseAllowance(poolAddress, _baseReductionAmount);
         emit debugUint("Trying to withdraw...", 0);
-        uint256 baseAmountUnlocked = pool.withdraw(BASE_TOKEN, baseReductionAmount_, address(this));
+        uint256 baseAmountUnlocked = pool.withdraw(BASE_TOKEN, _baseReductionAmount, address(this));
 
         emit debugUint("Base amount unlocked", baseAmountUnlocked);
 
         // 3. Swap the unlocked base token for quote token
         address odosRouterAddress = centralRegistry.protocols("ODOS_ROUTER");
         IERC20(BASE_TOKEN).safeIncreaseAllowance(odosRouterAddress, baseAmountUnlocked);
-        (uint256 amountIn, uint256 amountOut) = _swapBaseForQuote( _transactionData);
+        (uint256 baseIn, uint256 quoteOut) = _swapBaseForQuote( _transactionData);
 
 
         // 4. Approve the pool to transfer the necessary amount for the flash loan repayment
-        if (amountOut > totalDebt) {
-            IERC20(QUOTE_TOKEN).safeIncreaseAllowance(address(pool), amountOut);
-            emit debugUint("Amount out", amountOut);
-            uint256 remainingBalance = amountOut - totalDebt;
+        if (quoteOut > _totalDebt) {
+            IERC20(QUOTE_TOKEN).safeIncreaseAllowance(poolAddress, quoteOut);
+            emit debugUint("Amount out", quoteOut);
+            uint256 remainingBalance = quoteOut - _totalDebt;
             emit debugUint("Remaining balance", remainingBalance);
-            emit debugUint("Total debt", totalDebt);
+            emit debugUint("Total debt", _totalDebt);
             emit debugUint("quote balance", IERC20(QUOTE_TOKEN).balanceOf(address(this)));
             emit debugAddress("this address", address(this));
-            IERC721A leverageNFT = IERC721A(ICentralRegistry(centralRegistryAddress).core("LEVERAGE_NFT"));
+            address leveragedNFTAddress = centralRegistry.core("LEVERAGE_NFT");
+            IERC721A leverageNFT = IERC721A(leveragedNFTAddress);
             address NFTOwner = leverageNFT.ownerOf(tokenId);
             IERC20(QUOTE_TOKEN).safeTransfer(NFTOwner, remainingBalance);
         } 
@@ -420,7 +407,8 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver {
             IERC20(QUOTE_TOKEN).safeIncreaseAllowance(address(pool), amountOut);
             uint256 remainingBalance = amountOut - totalDebt;
             emit debugUint("Remaining balance", remainingBalance);
-            IERC721A leverageNFT = IERC721A(ICentralRegistry(centralRegistryAddress).core("LEVERAGE_NFT"));
+            address leverageNFTAddress = centralRegistry.core("LEVERAGE_NFT");
+            IERC721A leverageNFT = IERC721A(leverageNFTAddress);
             address NFTOwner = leverageNFT.ownerOf(tokenId);
             IERC20(QUOTE_TOKEN).safeTransfer(NFTOwner, remainingBalance);
         } 
