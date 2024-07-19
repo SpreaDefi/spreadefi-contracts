@@ -411,7 +411,9 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, SharedStorage {
             IERC721A leverageNFT = IERC721A(leverageNFTAddress);
             address NFTOwner = leverageNFT.ownerOf(tokenId);
             IERC20(QUOTE_TOKEN).safeTransfer(NFTOwner, remainingBalance);
-        } 
+        }
+
+        
     }
 
     

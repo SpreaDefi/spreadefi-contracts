@@ -12,7 +12,7 @@ import "src/interfaces/IERC721A.sol";
 import "src/interfaces/ICentralRegistry.sol";
 import {DataTypes} from "src/interfaces/external/zerolend/DataTypes.sol";
 
-contract Long_Quote_Odos_Zerolend is SharedStorage, IFlashLoanSimpleReceiver {
+contract Long_Base_Odos_Zerolend is SharedStorage, IFlashLoanSimpleReceiver {
     
     using SafeERC20 for IERC20;
 
@@ -197,6 +197,72 @@ contract Long_Quote_Odos_Zerolend is SharedStorage, IFlashLoanSimpleReceiver {
 
 
 
+    }
+
+
+    function closePosition(bytes memory _odosTransactionData) onlyMaster external {
+
+        (, address variableDebtTokenAddress) = _getReserveData(QUOTE_TOKEN);
+
+        uint256 debtAmount = IERC20(variableDebtTokenAddress).balanceOf(address(this));
+
+        bytes memory data = abi.encode(Action.CLOSE, 0, debtAmount, _odosTransactionData);
+
+        ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
+
+        address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
+
+        IPool(poolAddress).flashLoanSimple(address(this), QUOTE_TOKEN, debtAmount, data, 0);
+    }
+
+    function _closePosition(
+        uint256 _flashLoanAmount,
+        bytes memory _odosTransactionData,
+        uint256 _totalDebt
+    ) internal {
+
+        ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
+        address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
+        IPool pool = IPool(poolAddress);
+
+        // 1. Repay the (QUOTE) borrowed amount to unlock collateral (BASE)
+        IERC20(QUOTE_TOKEN).safeIncreaseAllowance(poolAddress, _flashLoanAmount);
+
+        pool.repay(QUOTE_TOKEN, _flashLoanAmount, 2, address(this));
+
+        // 2. Withdraw the base token that was unlocked
+        (address baseAtokenAddress,) = _getReserveData(BASE_TOKEN);
+        // get base A token balance
+        uint256 baseATokenBalance = IERC20(baseAtokenAddress).balanceOf(address(this));
+
+        uint256 baseAmountUnlocked = pool.withdraw(BASE_TOKEN, baseATokenBalance, address(this));
+        
+        address odosRouterAddress = centralRegistry.protocols("ODOS_ROUTER");
+
+        IERC20(BASE_TOKEN).safeIncreaseAllowance(odosRouterAddress, baseAmountUnlocked);
+
+        // 3. Swap the base token for the quote token
+
+        (uint256 baseIn, uint256 quoteOut) = _swapBaseForQuote(_odosTransactionData);
+
+        require (quoteOut >= _totalDebt, "Quote out is not equal to total debt");
+
+        uint256 leftoverBase = IERC20(BASE_TOKEN).balanceOf(address(this));
+        uint256 baseBalance = IERC20(QUOTE_TOKEN).balanceOf(address(this));
+        uint256 leftoverBalance = baseBalance - _totalDebt;
+
+        address leverageNFTAddress = centralRegistry.core("LEVERAGE_NFT");
+        IERC721A leverageNFT = IERC721A(leverageNFTAddress);
+        address NFTOwner = leverageNFT.ownerOf(tokenId);
+
+        if (leftoverBase > 0) {
+             
+            IERC20(BASE_TOKEN).safeTransfer(NFTOwner, leftoverBase);
+        }
+        if (leftoverBalance > 0) {
+            
+            IERC20(QUOTE_TOKEN).safeTransfer(NFTOwner, leftoverBalance);
+        }
     }
 
     function executeOperation(
