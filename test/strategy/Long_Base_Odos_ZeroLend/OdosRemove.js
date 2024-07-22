@@ -13,13 +13,14 @@ async function getQuote() {
         chainId: LineaChainId,
         inputTokens: [
             {
-                tokenAddress: USDCAddress,
-                amount: '2037225000000' 
+                tokenAddress: WBTCAddress,
+                amount: '5000000', // how much WBTC to sell, just enough to repay flash loan
+                // aiming for 3365090000 USDC
             }
         ],
         outputTokens: [
             {
-                tokenAddress: WBTCAddress,
+                tokenAddress: USDCAddress,
                 proportion: 1
             }
         ],

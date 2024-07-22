@@ -10,7 +10,7 @@ contract SharedStorage {
     address public centralRegistryAddress;
 
     /// @notice Constant representing the margin type (0 for quote, 1 for base)
-    uint256 public constant MARGIN_TYPE = 0;
+    uint256 public MARGIN_TYPE;
 
     /// @notice The token ID representing this position
     uint256 tokenId;

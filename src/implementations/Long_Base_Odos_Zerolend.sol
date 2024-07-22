@@ -66,6 +66,7 @@ contract Long_Base_Odos_Zerolend is SharedStorage, IFlashLoanSimpleReceiver {
         tokenId = _tokenId;
         QUOTE_TOKEN = _quoteToken;
         BASE_TOKEN = _baseToken;
+        MARGIN_TYPE = 1;
 
     }
 
@@ -76,6 +77,8 @@ contract Long_Base_Odos_Zerolend is SharedStorage, IFlashLoanSimpleReceiver {
         uint256 quoteBalanceBefore = IERC20(QUOTE_TOKEN).balanceOf(address(this));
         
         bytes memory returnData = _executeOdosTransaction(_transactionData);
+
+        emit debugUint("odos transaction executed", 0);
 
         baseOut = abi.decode(returnData, (uint256));
 
@@ -99,7 +102,7 @@ contract Long_Base_Odos_Zerolend is SharedStorage, IFlashLoanSimpleReceiver {
 
         Action action = Action.ADD;
 
-        bytes memory data = abi.encode(action, _marginAmount, _flashLoanAmount, _odosTransactionData);
+        bytes memory data = abi.encode(action, _marginAmount, _odosTransactionData);
 
         ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
 
@@ -115,15 +118,24 @@ contract Long_Base_Odos_Zerolend is SharedStorage, IFlashLoanSimpleReceiver {
         uint256 _totalDebt
     ) internal {
 
-        (uint256 quoteIn, uint256 baseOut) = _swapQuoteForBase(_odosTransactionData);
-
-        uint256 baseAmountDeposit = _marginAmount + baseOut;
-
         ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
 
         address poolAddress = ICentralRegistry(centralRegistryAddress).protocols("ZEROLEND_POOL");
 
         IPool pool = IPool(poolAddress);
+
+        address odosRouterAddress = centralRegistry.protocols("ODOS_ROUTER");
+
+        emit debugUint("add position called", 0);
+
+        IERC20(QUOTE_TOKEN).safeIncreaseAllowance(odosRouterAddress, _flashLoanAmount);
+
+        emit debugUint("quote token allowance increased", _flashLoanAmount);
+        emit debugUint("balance of quote token", IERC20(QUOTE_TOKEN).balanceOf(address(this)));
+
+        (uint256 quoteIn, uint256 baseOut) = _swapQuoteForBase(_odosTransactionData);
+
+        uint256 baseAmountDeposit = _marginAmount + baseOut;
 
         IERC20(BASE_TOKEN).safeIncreaseAllowance(poolAddress, baseAmountDeposit);
 
@@ -143,7 +155,7 @@ contract Long_Base_Odos_Zerolend is SharedStorage, IFlashLoanSimpleReceiver {
             
             Action action = Action.REMOVE;
     
-            bytes memory data = abi.encode(action, _baseReductionAmount, _flashLoanAmount, _odosTransactionData);
+            bytes memory data = abi.encode(action, _baseReductionAmount, _odosTransactionData);
     
             ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
     
@@ -172,19 +184,31 @@ contract Long_Base_Odos_Zerolend is SharedStorage, IFlashLoanSimpleReceiver {
 
         uint256 baseAmountUnlocked = pool.withdraw(BASE_TOKEN, _baseReductionAmount, address(this));
 
+        emit debugUint("BASE AMOUNT UNLOCKED", baseAmountUnlocked);
+
         address odosRouterAddress = centralRegistry.protocols("ODOS_ROUTER");
 
         IERC20(BASE_TOKEN).safeIncreaseAllowance(odosRouterAddress, baseAmountUnlocked);
 
+        emit debugUint("base token allowance increased", baseAmountUnlocked);
+
         (uint256 baseIn, uint256 quoteOut) = _swapBaseForQuote(_odosTransactionData);
 
+        emit debugString("done with swap");
+        emit debugUint("baseIn", baseIn);
+        emit debugUint("quoteOut", quoteOut);
+        emit debugUint("total debt", _totalDebt);
+        emit debugUint("base reduction amount", _baseReductionAmount);
+
         if (quoteOut > _totalDebt) {
+            emit debugUint("More quote out than total debt", quoteOut);
             // re supply extra quote token to the pool
             uint256 extra = quoteOut - _totalDebt;
             IERC20(QUOTE_TOKEN).safeIncreaseAllowance(poolAddress, extra);
             pool.deposit(QUOTE_TOKEN, extra, address(this), 0);
         }
         if (baseIn < _baseReductionAmount) {
+            emit debugUint("Base in is less than base reduction amount", baseIn);
             // send to user
             uint256 marginReturn = _baseReductionAmount - baseIn;
             address leverageNFTAddress = centralRegistry.core("LEVERAGE_NFT");
@@ -278,16 +302,18 @@ contract Long_Base_Odos_Zerolend is SharedStorage, IFlashLoanSimpleReceiver {
         
         (Action action, uint256 marginAddedOrBaseReductionAmount_, bytes memory odosTransactionData_) = abi.decode(params, (Action, uint256, bytes));
 
+        emit debugUint("params decoded", 0);
+
         if (action == Action.ADD) {
 
         emit debugUint("is add", 0);
 
-            _addPosition(flashLoanAmount, marginAddedOrBaseReductionAmount_,odosTransactionData_, totalDebt);
+            _addPosition(marginAddedOrBaseReductionAmount_, flashLoanAmount, odosTransactionData_, totalDebt);
 
         } else if (action == Action.REMOVE) {
             emit debugUint ("is remove", 0);
             
-            _removePosition(flashLoanAmount, marginAddedOrBaseReductionAmount_, odosTransactionData_, totalDebt);
+            _removePosition(marginAddedOrBaseReductionAmount_,flashLoanAmount, odosTransactionData_, totalDebt);
         }
             else if (action == Action.CLOSE) {
             emit debugUint ("is close", 2);
