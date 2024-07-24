@@ -1,0 +1,89 @@
+Date : 2024-07-22 02:00:40
+Directory : /home/gas_limit/leveraged-mm/src
+Total : 40 files,  1476 codes, 2058 comments, 569 blanks, all 4103 lines
+
+Languages
++------------+------------+------------+------------+------------+------------+
+| language   | files      | code       | comment    | blank      | total      |
++------------+------------+------------+------------+------------+------------+
+| solidity   |         34 |      1,906 |      2,084 |        613 |      4,603 |
+| Markdown   |          1 |         -5 |          0 |         -4 |         -9 |
+| JavaScript |          5 |       -425 |        -26 |        -40 |       -491 |
++------------+------------+------------+------------+------------+------------+
+
+Directories
++---------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                                                                | files      | code       | comment    | blank      | total      |
++---------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                                                                   |         40 |      1,476 |      2,058 |        569 |      4,103 |
+| . (Files)                                                                                                           |          5 |        195 |        104 |         83 |        382 |
+| ..                                                                                                                  |          9 |       -628 |        -63 |       -160 |       -851 |
+| ../test                                                                                                             |          9 |       -628 |        -63 |       -160 |       -851 |
+| ../test (Files)                                                                                                     |          1 |         -5 |          0 |         -4 |         -9 |
+| ../test/Mocks                                                                                                       |          1 |        -25 |         -1 |        -13 |        -39 |
+| ../test/strategy                                                                                                    |          7 |       -598 |        -62 |       -143 |       -803 |
+| ../test/strategy/Long_Base_Odos_ZeroLend                                                                            |          3 |       -240 |        -43 |        -63 |       -346 |
+| ../test/strategy/Long_Quote_Odos_ZeroLend                                                                           |          4 |       -358 |        -19 |        -80 |       -457 |
+| implementations                                                                                                     |          5 |        512 |        138 |        228 |        878 |
+| interfaces                                                                                                          |         12 |        647 |        906 |        198 |      1,751 |
+| interfaces (Files)                                                                                                  |          7 |        141 |        227 |         75 |        443 |
+| interfaces/external                                                                                                 |          5 |        506 |        679 |        123 |      1,308 |
+| interfaces/external/odos                                                                                            |          1 |         36 |          1 |          6 |         43 |
+| interfaces/external/zerolend                                                                                        |          4 |        470 |        678 |        117 |      1,265 |
+| libraries                                                                                                           |          9 |        750 |        973 |        220 |      1,943 |
+| libraries/ERC721A                                                                                                   |          1 |        539 |        618 |        157 |      1,314 |
+| libraries/openzeppelin                                                                                              |          8 |        211 |        355 |         63 |        629 |
+| libraries/openzeppelin/interfaces                                                                                   |          3 |         25 |        127 |         21 |        173 |
+| libraries/openzeppelin/proxy                                                                                        |          1 |         24 |         37 |          8 |         69 |
+| libraries/openzeppelin/token                                                                                        |          1 |         89 |         80 |         16 |        185 |
+| libraries/openzeppelin/utils                                                                                        |          3 |         73 |        111 |         18 |        202 |
+| libraries/openzeppelin/utils (Files)                                                                                |          2 |         69 |         92 |         16 |        177 |
+| libraries/openzeppelin/utils/introspection                                                                          |          1 |          4 |         19 |          2 |         25 |
++---------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++---------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| filename                                                                                                            | language   | code       | comment    | blank      | total      |
++---------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| /home/gas_limit/leveraged-mm/src/CentralRegistry.sol                                                                | solidity   |         24 |         19 |         12 |         55 |
+| /home/gas_limit/leveraged-mm/src/Factory.sol                                                                        | solidity   |         28 |         17 |         14 |         59 |
+| /home/gas_limit/leveraged-mm/src/LeveragedNFT.sol                                                                   | solidity   |         20 |         14 |         10 |         44 |
+| /home/gas_limit/leveraged-mm/src/Master.sol                                                                         | solidity   |         95 |         40 |         35 |        170 |
+| /home/gas_limit/leveraged-mm/src/Proxy.sol                                                                          | solidity   |         28 |         14 |         12 |         54 |
+| /home/gas_limit/leveraged-mm/src/implementations/Long_Base_Odos_Zerolend.sol                                        | solidity   |        243 |         30 |        117 |        390 |
+| /home/gas_limit/leveraged-mm/src/implementations/Long_Quote_Odos_Zerolend.sol                                       | solidity   |        251 |         95 |        103 |        449 |
+| /home/gas_limit/leveraged-mm/src/implementations/Shared_Storage.sol                                                 | solidity   |          8 |          9 |          6 |         23 |
+| /home/gas_limit/leveraged-mm/src/implementations/Short_Base_Odos_Zerolend.sol                                       | solidity   |          5 |          2 |          1 |          8 |
+| /home/gas_limit/leveraged-mm/src/implementations/Short_Quote_Odos_Zerolend.sol                                      | solidity   |          5 |          2 |          1 |          8 |
+| /home/gas_limit/leveraged-mm/src/interfaces/ICentralRegistry.sol                                                    | solidity   |         20 |          1 |          9 |         30 |
+| /home/gas_limit/leveraged-mm/src/interfaces/IERC721A.sol                                                            | solidity   |         58 |        205 |         44 |        307 |
+| /home/gas_limit/leveraged-mm/src/interfaces/IERC721Receiver.sol                                                     | solidity   |          9 |         17 |          2 |         28 |
+| /home/gas_limit/leveraged-mm/src/interfaces/IFactory.sol                                                            | solidity   |          4 |          1 |          1 |          6 |
+| /home/gas_limit/leveraged-mm/src/interfaces/ILeverageNFT.sol                                                        | solidity   |          5 |          1 |          4 |         10 |
+| /home/gas_limit/leveraged-mm/src/interfaces/IMaster.sol                                                             | solidity   |         25 |          1 |          9 |         35 |
+| /home/gas_limit/leveraged-mm/src/interfaces/IProxy.sol                                                              | solidity   |         20 |          1 |          6 |         27 |
+| /home/gas_limit/leveraged-mm/src/interfaces/external/odos/IOdosRouterV2.sol                                         | solidity   |         36 |          1 |          6 |         43 |
+| /home/gas_limit/leveraged-mm/src/interfaces/external/zerolend/DataTypes.sol                                         | solidity   |        200 |         43 |         22 |        265 |
+| /home/gas_limit/leveraged-mm/src/interfaces/external/zerolend/IFlashLoanSimpleReceiver.sol                          | solidity   |         14 |         18 |          4 |         36 |
+| /home/gas_limit/leveraged-mm/src/interfaces/external/zerolend/IPool.sol                                             | solidity   |        214 |        462 |         61 |        737 |
+| /home/gas_limit/leveraged-mm/src/interfaces/external/zerolend/IPoolAddressProvider.sol                              | solidity   |         42 |        155 |         30 |        227 |
+| /home/gas_limit/leveraged-mm/src/libraries/ERC721A/ERC721A.sol                                                      | solidity   |        539 |        618 |        157 |      1,314 |
+| /home/gas_limit/leveraged-mm/src/libraries/openzeppelin/interfaces/IERC1363.sol                                     | solidity   |         11 |         66 |          9 |         86 |
+| /home/gas_limit/leveraged-mm/src/libraries/openzeppelin/interfaces/IERC165.sol                                      | solidity   |          2 |          2 |          2 |          6 |
+| /home/gas_limit/leveraged-mm/src/libraries/openzeppelin/interfaces/IERC20.sol                                       | solidity   |         12 |         59 |         10 |         81 |
+| /home/gas_limit/leveraged-mm/src/libraries/openzeppelin/proxy/Proxy.sol                                             | solidity   |         24 |         37 |          8 |         69 |
+| /home/gas_limit/leveraged-mm/src/libraries/openzeppelin/token/SafeERC20.sol                                         | solidity   |         89 |         80 |         16 |        185 |
+| /home/gas_limit/leveraged-mm/src/libraries/openzeppelin/utils/Address.sol                                           | solidity   |         63 |         76 |         12 |        151 |
+| /home/gas_limit/leveraged-mm/src/libraries/openzeppelin/utils/Errors.sol                                            | solidity   |          6 |         16 |          4 |         26 |
+| /home/gas_limit/leveraged-mm/src/libraries/openzeppelin/utils/introspection/IERC165.sol                             | solidity   |          4 |         19 |          2 |         25 |
+| /home/gas_limit/leveraged-mm/test/Mocks/FlashLoanMock.sol                                                           | solidity   |        -25 |         -1 |        -13 |        -39 |
+| /home/gas_limit/leveraged-mm/test/README.md                                                                         | Markdown   |         -5 |          0 |         -4 |         -9 |
+| /home/gas_limit/leveraged-mm/test/strategy/Long_Base_Odos_ZeroLend/Long_Base_Odos_ZeroLend_Test.t.sol               | solidity   |        -70 |        -32 |        -47 |       -149 |
+| /home/gas_limit/leveraged-mm/test/strategy/Long_Base_Odos_ZeroLend/OdosAdd.js                                       | JavaScript |        -85 |         -5 |         -8 |        -98 |
+| /home/gas_limit/leveraged-mm/test/strategy/Long_Base_Odos_ZeroLend/OdosRemove.js                                    | JavaScript |        -85 |         -6 |         -8 |        -99 |
+| /home/gas_limit/leveraged-mm/test/strategy/Long_Quote_Odos_ZeroLend/OdosAdd.js                                      | JavaScript |        -85 |         -5 |         -8 |        -98 |
+| /home/gas_limit/leveraged-mm/test/strategy/Long_Quote_Odos_ZeroLend/OdosClose.js                                    | JavaScript |        -85 |         -5 |         -8 |        -98 |
+| /home/gas_limit/leveraged-mm/test/strategy/Long_Quote_Odos_ZeroLend/OdosRemove.js                                   | JavaScript |        -85 |         -5 |         -8 |        -98 |
+| /home/gas_limit/leveraged-mm/test/strategy/Long_Quote_Odos_ZeroLend/Using_Proxy_Long_Quote_Odos_ZeroLend_Test.t.sol | solidity   |       -103 |         -4 |        -56 |       -163 |
+| Total                                                                                                               |            |      1,476 |      2,058 |        569 |      4,103 |
++---------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+

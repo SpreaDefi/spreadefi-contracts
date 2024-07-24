@@ -272,8 +272,8 @@ contract Long_Base_Odos_Zerolend is SharedStorage, IFlashLoanSimpleReceiver {
         require (quoteOut >= _totalDebt, "Quote out is not equal to total debt");
 
         uint256 leftoverBase = IERC20(BASE_TOKEN).balanceOf(address(this));
-        uint256 baseBalance = IERC20(QUOTE_TOKEN).balanceOf(address(this));
-        uint256 leftoverBalance = baseBalance - _totalDebt;
+        uint256 quoteBalance = IERC20(QUOTE_TOKEN).balanceOf(address(this));
+        uint256 leftoverQuote = quoteBalance - _totalDebt;
 
         address leverageNFTAddress = centralRegistry.core("LEVERAGE_NFT");
         IERC721A leverageNFT = IERC721A(leverageNFTAddress);
@@ -283,9 +283,9 @@ contract Long_Base_Odos_Zerolend is SharedStorage, IFlashLoanSimpleReceiver {
              
             IERC20(BASE_TOKEN).safeTransfer(NFTOwner, leftoverBase);
         }
-        if (leftoverBalance > 0) {
+        if (leftoverQuote > 0) {
             
-            IERC20(QUOTE_TOKEN).safeTransfer(NFTOwner, leftoverBalance);
+            IERC20(QUOTE_TOKEN).safeTransfer(NFTOwner, leftoverQuote);
         }
     }
 
