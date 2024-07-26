@@ -156,6 +156,8 @@ contract Short_Base_Odos_Zerolend is SharedStorage {
 
         IERC20 baseToken = IERC20(BASE_TOKEN);
         IERC20 quoteToken = IERC20(QUOTE_TOKEN);
+
+        
     }
 
     function _swapBaseForQuote(

@@ -75,6 +75,25 @@ contract Short_Quote_Odos_Zerolend is SharedStorage {
 
     }
 
+    function addToPosition(
+        uint256 _marginAmount,
+        uint256 _flashLoanAmount,
+        bytes memory _odosTransactionData
+        ) onlyMaster external {
+
+        IERC20(QUOTE_TOKEN).safeTransferFrom(msg.sender, address(this), _marginAmount);
+
+        Action action = Action.ADD;
+
+        bytes memory data = abi.encode(action, _marginAmount, _odosTransactionData);
+
+        ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
+
+        address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
+
+        IPool(poolAddress).flashLoanSimple(address(this), QUOTE_TOKEN, _flashLoanAmount, data, 0);
+    }
+
 
     function _addPosition(
         uint256 _flashLoanAmount,
@@ -111,6 +130,22 @@ contract Short_Quote_Odos_Zerolend is SharedStorage {
         quoteToken.safeIncreaseAllowance(poolAddress, _totalDebt);
 
     }
+
+    function removeFromPosition(
+        uint256 _baseReduction, 
+        uint256 _flashLoanAmount,
+        bytes calldata _odosTransactionData) onlyMaster external {
+
+        Action action = Action.REMOVE;
+
+        bytes memory data = abi.encode(action, _baseReduction, _odosTransactionData);
+
+        // 1. Flash loan the _flashLoanAmount
+        ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
+        address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
+        IPool(poolAddress).flashLoanSimple(address(this), QUOTE_TOKEN, _flashLoanAmount, data, 0);
+    }
+
 
     function _removePosition(
         uint256 _flashLoanAmount,
