@@ -15,7 +15,7 @@ import "src/interfaces/IERC721Receiver.sol";
 
 // Using WBTC on this test because WETH is not working on my fork
 
-contract Using_Proxy_Long_Base_Odos_ZeroLend_Test is Test, IERC721Receiver {
+contract Using_Proxy_Long_Base_Odos_ZeroLend_Test_WBTC is Test, IERC721Receiver {
 
     address USDCAddress = 0x176211869cA2b568f2A7D4EE941E073a821EE1ff;
     address WBTCAddress = 0x3aAB2285ddcDdaD8edf438C1bAB47e1a9D05a9b4;
