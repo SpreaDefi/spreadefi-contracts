@@ -148,6 +148,11 @@ contract Long_Base_Odos_Zerolend is SharedStorage, IFlashLoanSimpleReceiver {
 
         IERC20(QUOTE_TOKEN).safeIncreaseAllowance(poolAddress, _totalDebt);
 
+        (address baseAtokenAddress,) = _getReserveData(BASE_TOKEN);
+        // get base A token balance
+        uint256 baseATokenBalance = IERC20(baseAtokenAddress).balanceOf(address(this));
+        emit debugUint("base A token balance", baseATokenBalance);
+
     }
 
     function removeFromPosition(
@@ -233,7 +238,7 @@ contract Long_Base_Odos_Zerolend is SharedStorage, IFlashLoanSimpleReceiver {
 
         uint256 debtAmount = IERC20(variableDebtTokenAddress).balanceOf(address(this));
 
-        bytes memory data = abi.encode(Action.CLOSE, 0, debtAmount, _odosTransactionData);
+        bytes memory data = abi.encode(Action.CLOSE, debtAmount, _odosTransactionData);
 
         ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
 
@@ -268,9 +273,15 @@ contract Long_Base_Odos_Zerolend is SharedStorage, IFlashLoanSimpleReceiver {
 
         IERC20(BASE_TOKEN).safeIncreaseAllowance(odosRouterAddress, baseAmountUnlocked);
 
+        emit debugUint("base token balance", baseAmountUnlocked);
+
         // 3. Swap the base token for the quote token
 
         (uint256 baseIn, uint256 quoteOut) = _swapBaseForQuote(_odosTransactionData);
+
+        emit debugUint("baseIn", baseIn);
+        emit debugUint("quoteOut", quoteOut);
+        emit debugUint("total debt", _totalDebt);
 
         require (quoteOut >= _totalDebt, "Quote out is not equal to total debt");
 
@@ -283,11 +294,11 @@ contract Long_Base_Odos_Zerolend is SharedStorage, IFlashLoanSimpleReceiver {
         address NFTOwner = leverageNFT.ownerOf(tokenId);
 
         if (leftoverBase > 0) {
-             
+            emit debugUint("leftover base", leftoverBase);
             IERC20(BASE_TOKEN).safeTransfer(NFTOwner, leftoverBase);
         }
         if (leftoverQuote > 0) {
-            
+            emit debugUint("leftover quote", leftoverQuote);
             IERC20(QUOTE_TOKEN).safeTransfer(NFTOwner, leftoverQuote);
         }
     }
@@ -320,7 +331,7 @@ contract Long_Base_Odos_Zerolend is SharedStorage, IFlashLoanSimpleReceiver {
         }
             else if (action == Action.CLOSE) {
             emit debugUint ("is close", 2);
-            // _closePosition(flashLoanAmount, odosTransactionData_, totalDebt);
+            _closePosition(flashLoanAmount, odosTransactionData_, totalDebt);
         }
 
         IERC20(QUOTE_TOKEN).safeIncreaseAllowance(msg.sender, totalDebt);
