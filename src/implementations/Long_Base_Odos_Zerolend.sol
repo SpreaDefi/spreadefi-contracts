@@ -82,6 +82,8 @@ contract Long_Base_Odos_Zerolend is SharedStorage, IFlashLoanSimpleReceiver {
 
         baseOut = abi.decode(returnData, (uint256));
 
+        emit debugUint("base out", baseOut);
+
         // Quote balance after swap
         uint256 quoteBalanceAfter = IERC20(QUOTE_TOKEN).balanceOf(address(this));
 
@@ -130,12 +132,13 @@ contract Long_Base_Odos_Zerolend is SharedStorage, IFlashLoanSimpleReceiver {
 
         IERC20(QUOTE_TOKEN).safeIncreaseAllowance(odosRouterAddress, _flashLoanAmount);
 
-        emit debugUint("quote token allowance increased", _flashLoanAmount);
-        emit debugUint("balance of quote token", IERC20(QUOTE_TOKEN).balanceOf(address(this)));
+        emit debugUint("quote token balance", IERC20(QUOTE_TOKEN).balanceOf(address(this)));
 
         (uint256 quoteIn, uint256 baseOut) = _swapQuoteForBase(_odosTransactionData);
 
         uint256 baseAmountDeposit = _marginAmount + baseOut;
+
+        emit debugUint("base amount deposit", baseAmountDeposit);
 
         IERC20(BASE_TOKEN).safeIncreaseAllowance(poolAddress, baseAmountDeposit);
 
@@ -363,7 +366,9 @@ contract Long_Base_Odos_Zerolend is SharedStorage, IFlashLoanSimpleReceiver {
         (bool success, bytes memory returnData) = odosRouterAddress.call(transactionData);
         require(success, "Odos transaction execution failed");
         emit debugString("Odos transaction executed successfully");
+
         return returnData;
+        
 
     }
 

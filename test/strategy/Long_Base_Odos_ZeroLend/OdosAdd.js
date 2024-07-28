@@ -14,7 +14,7 @@ async function getQuote() {
         inputTokens: [
             {
                 tokenAddress: USDCAddress,
-                amount: '1970712000000' 
+                amount: '1356710000' 
             }
         ],
         outputTokens: [

@@ -72,6 +72,7 @@ contract Short_Base_Odos_Zerolend is SharedStorage {
         tokenId = _tokenId;
         QUOTE_TOKEN = _quoteToken;
         BASE_TOKEN = _baseToken;
+        MARGIN_TYPE = 1;
 
     }
 

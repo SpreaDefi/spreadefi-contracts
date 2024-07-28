@@ -14,8 +14,7 @@ async function getQuote() {
         inputTokens: [
             {
                 tokenAddress: WBTCAddress,
-                amount: '5000000', // how much WBTC to sell, just enough to repay flash loan
-                // aiming for 3365090000 USDC
+                amount: '1000500', // how much WBTC to sell, just enough to repay flash loan + premium
             }
         ],
         outputTokens: [
