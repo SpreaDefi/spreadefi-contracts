@@ -58,7 +58,7 @@ contract Using_Proxy_Long_Base_Odos_ZeroLend_Test_WBTC is Test, IERC721Receiver 
         centralRegistry.addCore("MASTER", address(master));
         centralRegistry.addCore("FACTORY", address(factory));
         centralRegistry.addCore("LEVERAGE_NFT", address(leveragedNFT));
-        centralRegistry.addImplementation("LONG_QUOTE_ODOS_ZEROLEND", address(longBaseOdosZerolend));
+        centralRegistry.addImplementation("LONG_BASE_ODOS_ZEROLEND", address(longBaseOdosZerolend));
         
         centralRegistry.addProtocol("ODOS_ROUTER", OdosRouterAddress);
         centralRegistry.addProtocol("ZEROLEND_POOL", zeroLendAddress);
@@ -72,7 +72,7 @@ contract Using_Proxy_Long_Base_Odos_ZeroLend_Test_WBTC is Test, IERC721Receiver 
         IERC20(WBTCAddress).approve(address(master), TEN_MILLION_SATS);
 
         IMaster.NewPositionParams memory params = IMaster.NewPositionParams({
-            implementation: address(longBaseOdosZerolend),
+            implementation: "LONG_BASE_ODOS_ZEROLEND",
             quoteToken: USDCAddress,
             baseToken: WBTCAddress
         });
@@ -100,7 +100,7 @@ contract Using_Proxy_Long_Base_Odos_ZeroLend_Test_WBTC is Test, IERC721Receiver 
         IERC20(WBTCAddress).approve(address(master), TEN_MILLION_SATS);
 
         IMaster.NewPositionParams memory params = IMaster.NewPositionParams({
-            implementation: address(longBaseOdosZerolend),
+            implementation: "LONG_BASE_ODOS_ZEROLEND",
             quoteToken: USDCAddress,
             baseToken: WBTCAddress
         });
@@ -145,7 +145,7 @@ contract Using_Proxy_Long_Base_Odos_ZeroLend_Test_WBTC is Test, IERC721Receiver 
         IERC20(WBTCAddress).approve(address(master), TEN_MILLION_SATS);
 
         IMaster.NewPositionParams memory params = IMaster.NewPositionParams({
-            implementation: address(longBaseOdosZerolend),
+            implementation: "LONG_BASE_ODOS_ZEROLEND",
             quoteToken: USDCAddress,
             baseToken: WBTCAddress
         });
