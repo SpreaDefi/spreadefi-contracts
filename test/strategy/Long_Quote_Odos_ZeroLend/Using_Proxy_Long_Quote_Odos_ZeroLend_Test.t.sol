@@ -62,7 +62,7 @@ contract Using_Proxy_Long_Quote_Odos_ZeroLend_Test is Test, IERC721Receiver {
         IERC20(USDCAddress).approve(address(master), 100 * 10**6);
 
         IMaster.NewPositionParams memory params = IMaster.NewPositionParams({
-            implementation: address(longQuoteOdosZerolend),
+            implementation: "LONG_QUOTE_ODOS_ZEROLEND",
             quoteToken: USDCAddress,
             baseToken: WETHAddress
         });
@@ -74,7 +74,7 @@ contract Using_Proxy_Long_Quote_Odos_ZeroLend_Test is Test, IERC721Receiver {
         assertEq(nftBalance, 1);
 
         IMaster.PositionParams memory position = IMaster.PositionParams({
-            collateralAmount: 100 * 10**6,
+            marginAmount: 100 * 10**6,
             flashLoanAmount: 200 * 10**6,
             pathDefinition: odosAdd
         });
@@ -90,7 +90,7 @@ contract Using_Proxy_Long_Quote_Odos_ZeroLend_Test is Test, IERC721Receiver {
         IERC20(USDCAddress).approve(address(master), 100 * 10**6);
 
         IMaster.NewPositionParams memory params = IMaster.NewPositionParams({
-            implementation: address(longQuoteOdosZerolend),
+            implementation: "LONG_QUOTE_ODOS_ZEROLEND",
             quoteToken: USDCAddress,
             baseToken: WETHAddress
         });
@@ -102,7 +102,7 @@ contract Using_Proxy_Long_Quote_Odos_ZeroLend_Test is Test, IERC721Receiver {
         assertEq(nftBalance, 1);
 
         IMaster.PositionParams memory position = IMaster.PositionParams({
-            collateralAmount: 100 * 10**6,
+            marginAmount: 100 * 10**6,
             flashLoanAmount: 200 * 10**6,
             pathDefinition: odosAdd
         });
@@ -112,7 +112,13 @@ contract Using_Proxy_Long_Quote_Odos_ZeroLend_Test is Test, IERC721Receiver {
         uint256 baseReduction = 0.016 ether;
         uint256 flashLoanAmount = 55000000; // should be the price of the base reduction minus the flash loan premium
 
-        IMaster(address(master)).removeFromPosition(0, baseReduction, flashLoanAmount, odosRemove);
+        IMaster.PositionParams memory removeParams = IMaster.PositionParams({
+            marginAmount: baseReduction,
+            flashLoanAmount: flashLoanAmount,
+            pathDefinition: odosRemove
+        });
+
+        IMaster(address(master)).removeFromPosition(0, removeParams);
     }
 
 
@@ -123,7 +129,7 @@ contract Using_Proxy_Long_Quote_Odos_ZeroLend_Test is Test, IERC721Receiver {
         IERC20(USDCAddress).approve(address(master), 100 * 10**6);
 
         IMaster.NewPositionParams memory params = IMaster.NewPositionParams({
-            implementation: address(longQuoteOdosZerolend),
+            implementation: "LONG_QUOTE_ODOS_ZEROLEND",
             quoteToken: USDCAddress,
             baseToken: WETHAddress
         });
@@ -135,7 +141,7 @@ contract Using_Proxy_Long_Quote_Odos_ZeroLend_Test is Test, IERC721Receiver {
         assertEq(nftBalance, 1);
 
         IMaster.PositionParams memory position = IMaster.PositionParams({
-            collateralAmount: 100 * 10**6,
+            marginAmount: 100 * 10**6,
             flashLoanAmount: 200 * 10**6,
             pathDefinition: odosAdd
         });

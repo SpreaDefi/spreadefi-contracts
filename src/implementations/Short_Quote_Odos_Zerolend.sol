@@ -12,7 +12,7 @@ import "src/interfaces/IERC721A.sol";
 import "src/interfaces/ICentralRegistry.sol";
 import {DataTypes} from "src/interfaces/external/zerolend/DataTypes.sol";
 
-contract Short_Quote_Odos_Zerolend is SharedStorage {
+contract Short_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, SharedStorage {
 
     using SafeERC20 for IERC20;
 
@@ -72,6 +72,7 @@ contract Short_Quote_Odos_Zerolend is SharedStorage {
         tokenId = _tokenId;
         QUOTE_TOKEN = _quoteToken;
         BASE_TOKEN = _baseToken;
+        MARGIN_TYPE = 0;
 
     }
 
@@ -91,7 +92,9 @@ contract Short_Quote_Odos_Zerolend is SharedStorage {
 
         address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
 
-        IPool(poolAddress).flashLoanSimple(address(this), QUOTE_TOKEN, _flashLoanAmount, data, 0);
+        emit debugAddress("pool address", poolAddress);
+
+        IPool(poolAddress).flashLoanSimple(address(this), BASE_TOKEN, _flashLoanAmount, data, 0);
     }
 
 
@@ -102,6 +105,13 @@ contract Short_Quote_Odos_Zerolend is SharedStorage {
         uint256 _totalDebt
     ) internal {
 
+        //1. get quote margin + flash loan base
+        // 2. swap base for quote
+        // 3. deposit both quote margin and swapped quote
+        // 4. borrow base flash loan debt total
+
+        emit debugString("Adding position");
+
         IERC20 baseToken = IERC20(BASE_TOKEN);
         IERC20 quoteToken = IERC20(QUOTE_TOKEN);
 
@@ -109,10 +119,10 @@ contract Short_Quote_Odos_Zerolend is SharedStorage {
         address poolAddress = ICentralRegistry(centralRegistryAddress).protocols("ZEROLEND_POOL");
         IPool pool = IPool(poolAddress);
 
-        // Approve the base token to the odos router
-        baseToken.safeIncreaseAllowance( odosRouterAddress, _flashLoanAmount);
-
         // swap base for quote
+
+        baseToken.safeIncreaseAllowance(odosRouterAddress, _flashLoanAmount);
+
         (uint256 baseIn, uint256 quoteOut) = _swapBaseForQuote(_transactionData);
 
         uint256 quoteTotal = _marginAddAmount + quoteOut;
@@ -124,10 +134,20 @@ contract Short_Quote_Odos_Zerolend is SharedStorage {
         pool.deposit(QUOTE_TOKEN, quoteTotal, address(this), 0);
 
         // borrow base currency using quote token as collateral
-        pool.borrow(BASE_TOKEN, _flashLoanAmount, 2, 0, address(this));
+        pool.borrow(BASE_TOKEN, _totalDebt, 2, 0, address(this)); // enter the input amount
 
+
+        if(baseIn > _flashLoanAmount) {
+            // re supply the extra base token to the pool
+            uint256 extra = baseIn - _flashLoanAmount;
+            emit debugUint("extra base", extra);
+            baseToken.safeIncreaseAllowance(poolAddress, extra);
+
+            pool.deposit(BASE_TOKEN, extra, address(this), 0);
+        }
+        
         // approve the quote token to the Zerolend pool
-        quoteToken.safeIncreaseAllowance(poolAddress, _totalDebt);
+        baseToken.safeIncreaseAllowance(poolAddress, _totalDebt);
 
     }
 
@@ -277,6 +297,41 @@ contract Short_Quote_Odos_Zerolend is SharedStorage {
         
     }
 
+    function executeOperation(
+        address asset,
+        uint256 flashLoanAmount,
+        uint256 premium,
+        address initiator,
+        bytes calldata params
+    ) onlyZerolendPool onlySelf(initiator) external override returns (bool) {
+
+        uint256 totalDebt = flashLoanAmount + premium;
+        emit debugUint("totalDebt", totalDebt);
+        
+        (Action action, uint256 marginAddedOrBaseReductionAmount_, bytes memory odosTransactionData_) = abi.decode(params, (Action, uint256, bytes));
+
+        if (action == Action.ADD) {
+
+        emit debugUint("is add", 0);
+
+            _addPosition(flashLoanAmount, marginAddedOrBaseReductionAmount_,odosTransactionData_, totalDebt);
+
+        } else if (action == Action.REMOVE) {
+            emit debugUint ("is remove", 0);
+            
+            _removePosition(flashLoanAmount, marginAddedOrBaseReductionAmount_, odosTransactionData_, totalDebt);
+        }
+            else if (action == Action.CLOSE) {
+            emit debugUint ("is close", 2);
+            _closePosition(flashLoanAmount, odosTransactionData_, totalDebt);
+        }
+
+        IERC20(QUOTE_TOKEN).safeIncreaseAllowance(msg.sender, totalDebt);
+
+        return true;
+    }
+
+
     function _executeOdosTransaction(bytes memory transactionData) internal returns (bytes memory) {
         // Use a low-level call to execute the transaction
         emit debugString("Executing Odos transaction");
@@ -299,6 +354,22 @@ contract Short_Quote_Odos_Zerolend is SharedStorage {
         address aTokenAddress = assetData.aTokenAddress;
         address variableDebtTokenAddress = assetData.variableDebtTokenAddress;
         return (aTokenAddress, variableDebtTokenAddress);
+    }
+
+    /// @notice Returns the pool addresses provider
+    /// @return IPoolAddressesProvider The address of the pool addresses provider
+   function ADDRESSES_PROVIDER() external view override returns (IPoolAddressesProvider) {
+        ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
+        address addressProviderAddress = centralRegistry.protocols("ZEROLEND_ADDRESSES_PROVIDER");
+        return IPoolAddressesProvider(addressProviderAddress);
+    }
+
+    /// @notice Returns the pool addresses provider
+    /// @return IPoolAddressesProvider The address of the pool addresses provider
+    function POOL() external view override returns (IPool) {
+        ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
+        address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
+        return IPool(poolAddress);
     }
 
 

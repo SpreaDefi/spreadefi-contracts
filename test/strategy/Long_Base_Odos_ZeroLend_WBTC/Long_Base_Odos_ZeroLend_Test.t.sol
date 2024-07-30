@@ -84,7 +84,7 @@ contract Using_Proxy_Long_Base_Odos_ZeroLend_Test_WBTC is Test, IERC721Receiver 
         assertEq(nftBalance, 1);
 
         IMaster.PositionParams memory position = IMaster.PositionParams({
-            collateralAmount: ONE_MILLION_SATS,
+            marginAmount: ONE_MILLION_SATS,
             flashLoanAmount: 1356710000,
             pathDefinition: odosAdd
         });
@@ -113,7 +113,7 @@ contract Using_Proxy_Long_Base_Odos_ZeroLend_Test_WBTC is Test, IERC721Receiver 
 
         // increase the exposure to 0.03 BTC to a 3X Leveraged position
         IMaster.PositionParams memory position = IMaster.PositionParams({
-            collateralAmount: ONE_MILLION_SATS,
+            marginAmount: ONE_MILLION_SATS,
             flashLoanAmount: 1359640000, // 2M SATS in USDC price
             pathDefinition: odosAdd
         });
@@ -133,8 +133,14 @@ contract Using_Proxy_Long_Base_Odos_ZeroLend_Test_WBTC is Test, IERC721Receiver 
         // 678.36 * 100.05% [premium] = 679.05 USDC
         // 100.05% of 1 million satoshi = 1000500
 
+        IMaster.PositionParams memory removeParams = IMaster.PositionParams({
+            marginAmount: 1000500,
+            flashLoanAmount: 678360000,
+            pathDefinition: odosRemove
+        });
+
         // params: _tokenId, _baseReductionAmount, _flashLoanAmount, _pathDefinition
-        IMaster(address(master)).removeFromPosition(0, 1000500, 678360000, odosRemove);
+        IMaster(address(master)).removeFromPosition(0, removeParams);
 
 
     }
@@ -158,7 +164,7 @@ contract Using_Proxy_Long_Base_Odos_ZeroLend_Test_WBTC is Test, IERC721Receiver 
 
         // increase the exposure to 0.03 BTC to a 3X Leveraged position
         IMaster.PositionParams memory position = IMaster.PositionParams({
-            collateralAmount: ONE_MILLION_SATS,
+            marginAmount: ONE_MILLION_SATS,
             flashLoanAmount: 1356710000, // 2M SATS in USDC price
             pathDefinition: odosAdd
         });

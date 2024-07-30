@@ -39,14 +39,14 @@ contract Master {
 
     /// @notice Struct to define new position parameters
     struct NewPositionParams {
-        address implementation;
+        string implementation;
         address quoteToken;
         address baseToken;
     }
 
     /// @notice Struct to define position parameters for modifying an existing position
     struct PositionParams {
-        uint256 collateralAmount;
+        uint256 marginAmount;
         uint256 flashLoanAmount;
         bytes pathDefinition;
     }
@@ -61,10 +61,13 @@ contract Master {
     /// @notice Validates the parameters for creating a new position
     /// @dev Reverts if any of the parameters are invalid
     /// @param params The parameters for creating a new position
-    function validatePositionParams(NewPositionParams memory params) internal pure {
-        if (params.implementation == address(0)) revert ImplementationNotFound();
+    function validatePositionParams(NewPositionParams memory params) internal view returns (address) {
+        address implementationAddress = centralRegistry.implementations(params.implementation);
+        if (implementationAddress == address(0)) revert ImplementationNotFound();
         if (params.quoteToken == address(0)) revert ZeroAddress();
         if (params.baseToken == address(0)) revert ZeroAddress();
+
+        return implementationAddress;
 
     }
 
@@ -75,38 +78,19 @@ contract Master {
     /// @return proxyAddress The address of the newly created proxy contract
     function createPosition(NewPositionParams memory params) public returns (uint256 tokenId, address proxyAddress) {
 
-        validatePositionParams(params);
+        address implementationAddress = validatePositionParams(params);
 
-        (tokenId, proxyAddress) = _createPosition(params);
+        (tokenId, proxyAddress) = _createPosition(params.quoteToken, params.baseToken, implementationAddress);
         
     }
 
-    /// @notice Internal function to create a new leveraged position
-    /// @dev Mints an NFT and initializes a proxy contract for the position
-    /// @param params The parameters for creating a new position
-    /// @return tokenId The ID of the newly minted leverage NFT
-    /// @return proxyAddress The address of the newly created proxy contract
-    function _createPosition(NewPositionParams memory params) 
+    function _createPosition(address _quoteToken, address _baseToken, address _implementation)
         internal returns (uint256 tokenId, address proxyAddress) 
     {
-        IERC20 marginToken;
-        address quoteToken = params.quoteToken;
-        address baseToken = params.baseToken;
-        address implementationAddress = params.implementation;
-        uint256 marginType = IProxy(implementationAddress).MARGIN_TYPE();
-
-        // 0 - QUOTE, 1 - BASE
-        if (marginType == 0) {
-            marginToken = IERC20(quoteToken);
-        } else if (marginType == 1) {
-            marginToken = IERC20(baseToken);
-        } else {
-            revert InvalidMarginType();
-        }
 
         IFactory factory = IFactory(centralRegistry.core("FACTORY"));
 
-        (tokenId, proxyAddress) = factory.createProxy(msg.sender, implementationAddress, quoteToken, baseToken);
+        (tokenId, proxyAddress) = factory.createProxy(msg.sender, _implementation, _quoteToken, _baseToken);
 
     
     }
@@ -126,31 +110,25 @@ contract Master {
         if (marginType == 0) {
             address quoteToken = IProxy(proxyAddress).QUOTE_TOKEN();
             marginToken = IERC20(quoteToken);
-            marginToken.safeTransferFrom(msg.sender, address(this), _positionParams.collateralAmount);
+            marginToken.safeTransferFrom(msg.sender, address(this), _positionParams.marginAmount);
         } else if (marginType == 1) {
             address baseToken = IProxy(proxyAddress).BASE_TOKEN();
             marginToken = IERC20(baseToken);
-            marginToken.safeTransferFrom(msg.sender, address(this), _positionParams.collateralAmount);
+            marginToken.safeTransferFrom(msg.sender, address(this), _positionParams.marginAmount);
         } else {
             revert InvalidMarginType();
         }
 
-        marginToken.safeIncreaseAllowance(proxyAddress, _positionParams.collateralAmount);
+        marginToken.safeIncreaseAllowance(proxyAddress, _positionParams.marginAmount);
 
-        IProxy(proxyAddress).addToPosition(_positionParams.collateralAmount, _positionParams.flashLoanAmount,_positionParams.pathDefinition);
+        IProxy(proxyAddress).addToPosition(_positionParams.marginAmount, _positionParams.flashLoanAmount,_positionParams.pathDefinition);
     }
 
-    /// @notice Removes from an existing leveraged position
-    /// @dev Ensures the caller is the owner of the NFT before removing from the position
-    /// @param _tokenId The ID of the leverage NFT
-    /// @param _baseReductionAmount The amount of base token to reduce
-    /// @param _flashLoanAmount The amount of flash loan to use
-    /// @param _transactionData The transaction data for the removal
-    function removeFromPosition(uint256 _tokenId, uint256 _baseReductionAmount, uint256 _flashLoanAmount, bytes memory _transactionData) onlyNFTOwner(_tokenId) public {
+    function removeFromPosition(uint256 _tokenId,PositionParams memory params) onlyNFTOwner(_tokenId) public {
         ILeverageNFT leverageNFT = ILeverageNFT(centralRegistry.core("LEVERAGE_NFT"));
         address proxyAddress = leverageNFT.tokenIdToProxy(_tokenId);
 
-        IProxy(proxyAddress).removeFromPosition(_baseReductionAmount, _flashLoanAmount, _transactionData);
+        IProxy(proxyAddress).removeFromPosition(params.marginAmount, params.flashLoanAmount, params.pathDefinition);
     }
 
     /// @notice Closes an existing leveraged position

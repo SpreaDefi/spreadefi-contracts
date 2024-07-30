@@ -30,7 +30,7 @@ contract Using_Proxy_Short_Quote_Odos_ZeroLend_Test is Test, IERC721Receiver {
 
     /* %%%%%%%%%%%%%%%% ODOS API VARIABLES %%%%%%%%%%%%%%%% */
 
-    bytes odosAdd = hex"83bd37f90001e5d7c2a44ffddf6b295a15c148167daaaf5cf34f0001176211869ca2b568f2a7d4ee941e073a821ee1ff040bed48a000028f5c0001d804BA88371A3f00dDaCA03Cbc2b6C47F38105FC000159048Ff7D11ef18514163d0A860fb7A34927a45200014f81992FCe2E1846dD528eC0102e6eE1f61ed3e2000000000301020300030101000102001eff0000000000000000000000000000000000000059048ff7d11ef18514163d0a860fb7a34927a452e5d7c2a44ffddf6b295a15c148167daaaf5cf34f000000000000000000000000000000000000000000000000";
+    bytes odosAdd = hex"83bd37f90001e5d7c2a44ffddf6b295a15c148167daaaf5cf34f0001176211869ca2b568f2a7d4ee941e073a821ee1ff07d8b72d434c8000040c037482028f5c0001d804BA88371A3f00dDaCA03Cbc2b6C47F38105FC000000014f81992FCe2E1846dD528eC0102e6eE1f61ed3e20000000003010203000a0101010200ff000000000000000000000000000000000000000000586733678b9ac9da43dd7cb83bbb41d23677dfc3e5d7c2a44ffddf6b295a15c148167daaaf5cf34f000000000000000000000000000000000000000000000000";
 
     bytes odosRemove = hex'83bd37f90001e5d7c2a44ffddf6b295a15c148167daaaf5cf34f0001176211869ca2b568f2a7d4ee941e073a821ee1ff0738d7ea4c68000004035123f6028f5c0001d804BA88371A3f00dDaCA03Cbc2b6C47F38105FC000000014f81992FCe2E1846dD528eC0102e6eE1f61ed3e20000000003010203000a0101010200ff000000000000000000000000000000000000000000d5539d0360438a66661148c633a9f0965e482845e5d7c2a44ffddf6b295a15c148167daaaf5cf34f000000000000000000000000000000000000000000000000';
 
@@ -71,8 +71,39 @@ contract Using_Proxy_Short_Quote_Odos_ZeroLend_Test is Test, IERC721Receiver {
         assertEq(nftBalance, 1);
 
         IMaster.PositionParams memory positionParams = IMaster.PositionParams({
-            collateralAmount: 100 * 10**6,
-            flashLoanAmount: 200 * 10**6,
+            marginAmount: 100 * 10**6,
+            flashLoanAmount: 0.061 ether,
+            pathDefinition: odosAdd
+        });
+
+        IMaster(address(master)).addToPosition(
+            0,
+            positionParams
+        );
+
+
+    }
+
+    function testRemovePosition() public {
+        deal(USDCAddress, (address(this)), 100 * 10**6, true);
+
+        IERC20(USDCAddress).approve(address(master), 100 * 10**6);
+
+        IMaster.NewPositionParams memory params = IMaster.NewPositionParams({
+            implementation: "SHORT_QUOTE_ODOS_ZEROLEND",
+            quoteToken: USDCAddress,
+            baseToken: WETHAddress
+        });
+
+        IMaster(address(master)).createPosition(params);
+
+        uint256 nftBalance = leveragedNFT.balanceOf(address(this));
+
+        assertEq(nftBalance, 1);
+
+        IMaster.PositionParams memory positionParams = IMaster.PositionParams({
+            marginAmount: 100 * 10**6,
+            flashLoanAmount: 0.061 ether,
             pathDefinition: odosAdd
         });
 
