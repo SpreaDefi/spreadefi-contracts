@@ -12,7 +12,7 @@ import "src/interfaces/IERC721A.sol";
 import "src/interfaces/ICentralRegistry.sol";
 import {DataTypes} from "src/interfaces/external/zerolend/DataTypes.sol";
 
-contract Short_Base_Odos_Zerolend is SharedStorage {
+contract Short_Base_Odos_Zerolend is SharedStorage, IFlashLoanSimpleReceiver {
     
     using SafeERC20 for IERC20;
 
@@ -76,9 +76,28 @@ contract Short_Base_Odos_Zerolend is SharedStorage {
 
     }
 
-    function _addPosition(
+    function addToPosition(
+        uint256 _marginAmount,
         uint256 _flashLoanAmount,
+        bytes memory _odosTransactionData
+    ) onlyMaster external {
+
+        IERC20(BASE_TOKEN).safeTransferFrom(msg.sender, address(this), _marginAmount);
+
+        Action action = Action.ADD;
+
+        bytes memory data = abi.encode(action, _marginAmount, _odosTransactionData);
+
+        ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
+
+        address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
+
+        IPool(poolAddress).flashLoanSimple(address(this), BASE_TOKEN, _flashLoanAmount, data, 0);
+    }
+
+    function _addPosition(
         uint256 _marginAddAmount,
+        uint256 _flashLoanAmount,
         bytes memory _transactionData,
         uint256 _totalDebt
     ) internal {
@@ -103,10 +122,27 @@ contract Short_Base_Odos_Zerolend is SharedStorage {
         // lend quote token to the pool
         pool.deposit(QUOTE_TOKEN, quoteOut, address(this), 0);
 
-        pool.borrow(BASE_TOKEN, _flashLoanAmount, 2, 0, address(this));
+        emit debugUint("trying to borrow...", _totalDebt);
+        pool.borrow(BASE_TOKEN, _totalDebt, 2, 0, address(this));
 
-        baseToken.safeIncreaseAllowance(poolAddress, _flashLoanAmount);
+        baseToken.safeIncreaseAllowance(poolAddress, _totalDebt);
         
+    }
+
+    function removeFromPosition(
+        uint256 _quoteReductionAmount,
+        uint256 _flashLoanAmount,
+        bytes memory _transactionData
+    ) onlyMaster external {
+        Action action = Action.REMOVE;
+
+        bytes memory data = abi.encode(action, _quoteReductionAmount, _transactionData);
+
+        ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
+
+        address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
+
+        IPool(poolAddress).flashLoanSimple(address(this), BASE_TOKEN, _flashLoanAmount, data, 0);
     }
 
     function _removePosition(
@@ -129,7 +165,7 @@ contract Short_Base_Odos_Zerolend is SharedStorage {
 
         uint256 quoteAmountUnlocked = pool.withdraw(QUOTE_TOKEN, _quoteReductionAmount, address(this));
 
-        quoteToken.safeIncreaseAllowance(odosRouterAddress, _quoteReductionAmount);
+        quoteToken.safeIncreaseAllowance(odosRouterAddress, quoteAmountUnlocked);
 
         (uint256 quoteIn, uint256 baseOut) = _swapQuoteForBase(_transactionData);
 
@@ -139,7 +175,7 @@ contract Short_Base_Odos_Zerolend is SharedStorage {
         }
         if (baseOut > _totalDebt) {
             uint256 marginReturn = baseOut - _totalDebt;
-            address leverageNFTAddress = centralRegistry.protocols("LEVERAGE_NFT");
+            address leverageNFTAddress = centralRegistry.core("LEVERAGE_NFT");
             IERC721A leverageNFT = IERC721A(leverageNFTAddress);
             address NFTOwner = leverageNFT.ownerOf(tokenId);
             baseToken.safeTransfer(NFTOwner, marginReturn);
@@ -198,6 +234,40 @@ contract Short_Base_Odos_Zerolend is SharedStorage {
         
     }
 
+    function executeOperation(
+        address asset,
+        uint256 flashLoanAmount,
+        uint256 premium,
+        address initiator,
+        bytes calldata params
+    ) onlyZerolendPool onlySelf(initiator) external override returns (bool) {
+
+        uint256 totalDebt = flashLoanAmount + premium;
+        emit debugUint("totalDebt", totalDebt);
+       
+        (Action action, uint256 marginAddedOrBaseReductionAmount_, bytes memory odosTransactionData_) = abi.decode(params, (Action, uint256, bytes));
+
+        if (action == Action.ADD) {
+
+        emit debugUint("is add", 0);
+
+            _addPosition(flashLoanAmount, marginAddedOrBaseReductionAmount_,odosTransactionData_, totalDebt);
+
+        } else if (action == Action.REMOVE) {
+            emit debugUint ("is remove", 0);
+            
+            _removePosition(flashLoanAmount, marginAddedOrBaseReductionAmount_, odosTransactionData_, totalDebt);
+        }
+            else if (action == Action.CLOSE) {
+            emit debugUint ("is close", 2);
+            _closePosition(flashLoanAmount, odosTransactionData_, totalDebt);
+        }
+
+        IERC20(BASE_TOKEN).safeIncreaseAllowance(msg.sender, totalDebt);
+
+        return true;
+    }
+
     function _executeOdosTransaction(bytes memory transactionData) internal returns (bytes memory) {
         // Use a low-level call to execute the transaction
         emit debugString("Executing Odos transaction");
@@ -220,6 +290,22 @@ contract Short_Base_Odos_Zerolend is SharedStorage {
         address aTokenAddress = assetData.aTokenAddress;
         address variableDebtTokenAddress = assetData.variableDebtTokenAddress;
         return (aTokenAddress, variableDebtTokenAddress);
+    }
+
+    /// @notice Returns the pool addresses provider
+    /// @return IPoolAddressesProvider The address of the pool addresses provider
+   function ADDRESSES_PROVIDER() external view override returns (IPoolAddressesProvider) {
+        ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
+        address addressProviderAddress = centralRegistry.protocols("ZEROLEND_ADDRESSES_PROVIDER");
+        return IPoolAddressesProvider(addressProviderAddress);
+    }
+
+    /// @notice Returns the pool addresses provider
+    /// @return IPoolAddressesProvider The address of the pool addresses provider
+    function POOL() external view override returns (IPool) {
+        ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
+        address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
+        return IPool(poolAddress);
     }
 
 }

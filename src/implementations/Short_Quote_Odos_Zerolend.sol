@@ -163,7 +163,7 @@ contract Short_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, SharedStorage {
         // 1. Flash loan the _flashLoanAmount
         ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
         address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
-        IPool(poolAddress).flashLoanSimple(address(this), QUOTE_TOKEN, _flashLoanAmount, data, 0);
+        IPool(poolAddress).flashLoanSimple(address(this), BASE_TOKEN, _flashLoanAmount, data, 0);
     }
 
 
@@ -173,6 +173,8 @@ contract Short_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, SharedStorage {
         bytes memory _transactionData,
         uint256 _totalDebt
     ) internal {
+        emit debugString("Removing position");
+
         ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
         address odosRouterAddress = centralRegistry.protocols("ODOS_ROUTER");
         address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
@@ -181,33 +183,65 @@ contract Short_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, SharedStorage {
         IERC20 baseToken = IERC20(BASE_TOKEN);
         IERC20 quoteToken = IERC20(QUOTE_TOKEN);
 
+
         baseToken.safeIncreaseAllowance(poolAddress, _flashLoanAmount);
 
+        emit debugString("Repaying flash loan");
+
         pool.repay(BASE_TOKEN, _flashLoanAmount, 2, address(this));
+
+        emit debugString("Withdrawing quote token");
+        emit debugUint("quote reduction amount", _quoteReductionAmount);
 
         uint256 quoteAmountUnlocked = pool.withdraw(QUOTE_TOKEN, _quoteReductionAmount, address(this));
 
         quoteToken.safeIncreaseAllowance(odosRouterAddress, quoteAmountUnlocked);
 
+        emit debugString("Swapping quote for base");
+
         (uint256 quoteIn, uint256 baseOut) = _swapQuoteForBase(_transactionData);
+
+        emit debugUint("base balance", baseToken.balanceOf(address(this)));
 
         if (baseOut > _totalDebt) {
             // re supply the extra base token to the pool
             uint256 extra = baseOut - _totalDebt;
+            emit debugUint("extra base", extra);
             baseToken.safeIncreaseAllowance(poolAddress, extra);
 
             pool.deposit(BASE_TOKEN, extra, address(this), 0);
 
         }
-        if(quoteIn > _quoteReductionAmount) {
+        if(quoteIn < _quoteReductionAmount) {
             // send to the user
-            uint256 marginReturn = quoteIn - _quoteReductionAmount;
+            uint256 marginReturn = quoteAmountUnlocked - quoteIn;
+            emit debugUint("margin return", marginReturn);
             address leverageNFTAddress = centralRegistry.core("LEVERAGE_NFT");
             IERC721A leverageNFT = IERC721A(leverageNFTAddress);
             address NFTOwner = leverageNFT.ownerOf(tokenId);
             quoteToken.safeTransfer(NFTOwner, marginReturn);
         }
 
+        emit debugString("end");
+
+       
+
+    }
+
+    function closePosition(bytes calldata _odosTransactionData) onlyMaster external {
+        // get the balance of the variable debt token
+        emit debugString("Close position called");
+        (, address varialbeDebtTokenAddress) = _getReserveData(BASE_TOKEN);
+        uint256 debtAmount = IERC20(varialbeDebtTokenAddress).balanceOf(address(this));
+
+        Action action = Action.CLOSE;
+
+        bytes memory data = abi.encode(action, debtAmount, _odosTransactionData);
+
+        ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
+
+        address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
+        IPool(poolAddress).flashLoanSimple(address(this), BASE_TOKEN, debtAmount, data, 0);
     }
 
     function _closePosition(
@@ -218,6 +252,8 @@ contract Short_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, SharedStorage {
         ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
         address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
         IPool pool = IPool(poolAddress);
+
+        emit debugString("Closing position");
 
         IERC20 baseToken = IERC20(BASE_TOKEN);
         IERC20 quoteToken = IERC20(QUOTE_TOKEN);
@@ -232,7 +268,10 @@ contract Short_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, SharedStorage {
 
         IERC20(quoteATokenAddress).safeIncreaseAllowance(poolAddress, baseATokenBalance);
 
-        pool.withdraw(QUOTE_TOKEN, baseATokenBalance, address(this));
+        uint256 amountUnlocked = pool.withdraw(QUOTE_TOKEN, baseATokenBalance, address(this));
+
+        emit debugUint("amount unlocked", amountUnlocked);
+        emit debugUint("total debt", _totalDebt);
 
         address odosRouterAddress = centralRegistry.protocols("ODOS_ROUTER");
 
@@ -240,7 +279,10 @@ contract Short_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, SharedStorage {
 
         (uint256 quoteIn, uint256 baseOut) = _swapQuoteForBase(_odosTransactionData);
 
-        uint256 leftoverQuote = baseToken.balanceOf(address(this));
+        emit debugUint("base out", baseOut);
+        emit debugUint("total debt", _totalDebt);
+
+        uint256 leftoverQuote = quoteToken.balanceOf(address(this));
         uint256 baseBalance = IERC20(BASE_TOKEN).balanceOf(address(this));
         uint256 leftoverBase = baseBalance - _totalDebt;
 
@@ -248,11 +290,11 @@ contract Short_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, SharedStorage {
         IERC721A leverageNFT = IERC721A(leverageNFTAddress);
         address NFTOwner = leverageNFT.ownerOf(tokenId);
         if (leftoverBase > 0) {
-             
+            emit debugUint("leftover base", leftoverBase);
             IERC20(BASE_TOKEN).safeTransfer(NFTOwner, leftoverBase);
         }
         if (leftoverQuote > 0) {
-            
+            emit debugUint("leftover quote", leftoverQuote);
             IERC20(QUOTE_TOKEN).safeTransfer(NFTOwner, leftoverQuote);
         }
 
@@ -326,7 +368,7 @@ contract Short_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, SharedStorage {
             _closePosition(flashLoanAmount, odosTransactionData_, totalDebt);
         }
 
-        IERC20(QUOTE_TOKEN).safeIncreaseAllowance(msg.sender, totalDebt);
+        IERC20(BASE_TOKEN).safeIncreaseAllowance(msg.sender, totalDebt);
 
         return true;
     }
