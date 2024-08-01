@@ -182,6 +182,22 @@ contract Short_Base_Odos_Zerolend is SharedStorage, IFlashLoanSimpleReceiver {
         }
     }
 
+    function closePosition(bytes calldata _odosTransactionData) onlyMaster external {
+        (, address variableDebtTokenAddress) = _getReserveData(BASE_TOKEN);
+
+        uint256 debtAmount = IERC20(variableDebtTokenAddress).balanceOf(address(this));
+
+        Action action = Action.CLOSE;
+
+        bytes memory data = abi.encode(action, debtAmount, _odosTransactionData);
+
+        ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
+
+        address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
+
+        IPool(poolAddress).flashLoanSimple(address(this), BASE_TOKEN, debtAmount, data, 0);
+    }
+
     function _closePosition(
         uint256 _flashLoanAmount,
         bytes memory _odosTransactionData,
@@ -193,6 +209,40 @@ contract Short_Base_Odos_Zerolend is SharedStorage, IFlashLoanSimpleReceiver {
 
         IERC20 baseToken = IERC20(BASE_TOKEN);
         IERC20 quoteToken = IERC20(QUOTE_TOKEN);
+
+        baseToken.safeIncreaseAllowance(poolAddress, _flashLoanAmount);
+
+        pool.repay(BASE_TOKEN, _flashLoanAmount, 2, address(this));
+
+        (address quoteATokenAddress, ) = _getReserveData(QUOTE_TOKEN);
+
+        uint256 baseATokenBalance = IERC20(quoteATokenAddress).balanceOf(address(this));
+
+        IERC20(quoteATokenAddress).safeIncreaseAllowance(poolAddress, baseATokenBalance);
+
+        uint256 amountUnlocked = pool.withdraw(QUOTE_TOKEN, baseATokenBalance, address(this));
+
+        address odosRouterAddress = centralRegistry.protocols("ODOS_ROUTER");
+
+        quoteToken.safeIncreaseAllowance(odosRouterAddress, amountUnlocked);
+
+        _swapQuoteForBase(_odosTransactionData);
+
+        uint256 leftoverQuote = quoteToken.balanceOf(address(this));
+        uint256 baseBalance = IERC20(BASE_TOKEN).balanceOf(address(this));
+        uint256 leftoverBase = baseBalance - _totalDebt;
+
+        address leverageNFTAddress = centralRegistry.core("LEVERAGE_NFT");
+        IERC721A leverageNFT = IERC721A(leverageNFTAddress);
+        address NFTOwner = leverageNFT.ownerOf(tokenId);
+        if(leftoverBase > 0) {
+            baseToken.safeTransfer(NFTOwner, leftoverBase);
+        }
+        if(leftoverQuote > 0) {
+            quoteToken.safeTransfer(NFTOwner, leftoverQuote);
+        }
+
+
 
         
     }

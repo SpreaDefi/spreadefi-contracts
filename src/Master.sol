@@ -105,23 +105,24 @@ contract Master {
         address proxyAddress = leverageNFT.tokenIdToProxy(_tokenId);
 
         IERC20 marginToken;
+        uint256 marginAmount = _positionParams.marginAmount;
 
         uint256 marginType = IProxy(proxyAddress).MARGIN_TYPE();
         if (marginType == 0) {
             address quoteToken = IProxy(proxyAddress).QUOTE_TOKEN();
             marginToken = IERC20(quoteToken);
-            marginToken.safeTransferFrom(msg.sender, address(this), _positionParams.marginAmount);
+            marginToken.safeTransferFrom(msg.sender, address(this), marginAmount);
         } else if (marginType == 1) {
             address baseToken = IProxy(proxyAddress).BASE_TOKEN();
             marginToken = IERC20(baseToken);
-            marginToken.safeTransferFrom(msg.sender, address(this), _positionParams.marginAmount);
+            marginToken.safeTransferFrom(msg.sender, address(this), marginAmount);
         } else {
             revert InvalidMarginType();
         }
 
-        marginToken.safeIncreaseAllowance(proxyAddress, _positionParams.marginAmount);
+        marginToken.safeIncreaseAllowance(proxyAddress, marginAmount);
 
-        IProxy(proxyAddress).addToPosition(_positionParams.marginAmount, _positionParams.flashLoanAmount,_positionParams.pathDefinition);
+        IProxy(proxyAddress).addToPosition(marginAmount, _positionParams.flashLoanAmount,_positionParams.pathDefinition);
     }
 
     function removeFromPosition(uint256 _tokenId,PositionParams memory params) onlyNFTOwner(_tokenId) public {

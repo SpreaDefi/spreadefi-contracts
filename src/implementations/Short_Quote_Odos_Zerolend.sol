@@ -231,8 +231,8 @@ contract Short_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, SharedStorage {
     function closePosition(bytes calldata _odosTransactionData) onlyMaster external {
         // get the balance of the variable debt token
         emit debugString("Close position called");
-        (, address varialbeDebtTokenAddress) = _getReserveData(BASE_TOKEN);
-        uint256 debtAmount = IERC20(varialbeDebtTokenAddress).balanceOf(address(this));
+        (, address variableDebtTokenAddress) = _getReserveData(BASE_TOKEN);
+        uint256 debtAmount = IERC20(variableDebtTokenAddress).balanceOf(address(this));
 
         Action action = Action.CLOSE;
 
