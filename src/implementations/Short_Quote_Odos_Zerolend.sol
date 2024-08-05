@@ -135,16 +135,6 @@ contract Short_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, SharedStorage {
 
         // borrow base currency using quote token as collateral
         pool.borrow(BASE_TOKEN, _totalDebt, 2, 0, address(this)); // enter the input amount
-
-
-        if(baseIn > _flashLoanAmount) {
-            // re supply the extra base token to the pool
-            uint256 extra = baseIn - _flashLoanAmount;
-            emit debugUint("extra base", extra);
-            baseToken.safeIncreaseAllowance(poolAddress, extra);
-
-            pool.deposit(BASE_TOKEN, extra, address(this), 0);
-        }
         
         // approve the quote token to the Zerolend pool
         baseToken.safeIncreaseAllowance(poolAddress, _totalDebt);

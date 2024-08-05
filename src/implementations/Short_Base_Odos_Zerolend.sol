@@ -124,6 +124,17 @@ contract Short_Base_Odos_Zerolend is SharedStorage, IFlashLoanSimpleReceiver {
 
         emit debugUint("trying to borrow...", _totalDebt);
         pool.borrow(BASE_TOKEN, _totalDebt, 2, 0, address(this));
+        
+        // get leftover base amount
+        uint256 baseBalance = baseToken.balanceOf(address(this));
+        uint256 leftoverBase = baseBalance - _totalDebt;
+
+        if (leftoverBase > 0) {
+            address leverageNFTAddress = ICentralRegistry(centralRegistryAddress).core("LEVERAGE_NFT");
+            IERC721A leverageNFT = IERC721A(leverageNFTAddress);
+            address NFTOwner = leverageNFT.ownerOf(tokenId);
+            baseToken.safeTransfer(NFTOwner, leftoverBase);
+        }
 
         baseToken.safeIncreaseAllowance(poolAddress, _totalDebt);
         

@@ -274,6 +274,8 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, SharedStorage {
         uint256 _totalDebt
     ) internal {
 
+        IERC20 quoteToken = IERC20(QUOTE_TOKEN);
+
         uint256 swapInAmount = _flashLoanAmount + _marginAddAmount;
 
         ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
@@ -281,7 +283,7 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, SharedStorage {
         address odosRouterAddress = centralRegistry.protocols("ODOS_ROUTER");
 
         // 0. approve odos router to spend the quote token
-        IERC20(QUOTE_TOKEN).safeIncreaseAllowance(odosRouterAddress, swapInAmount);
+        quoteToken.safeIncreaseAllowance(odosRouterAddress, swapInAmount);
 
         // 1. Swap the flash loaned (quote) amount + margin (quote) for the base token
         // IERC20(QUOTE_TOKEN).safeIncreaseAllowance(odosRouterAddress, tokenInAmount);
@@ -290,19 +292,20 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, SharedStorage {
         // 2. Deposit the base token to the money market
         address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
         IPool pool = IPool(poolAddress);
-        // emit balance of base token
-        emit debugUint("Base token balance", IERC20(BASE_TOKEN).balanceOf(address(this)));
+
         IERC20(BASE_TOKEN).safeIncreaseAllowance(address(poolAddress), baseAmountOut);
         pool.supply(BASE_TOKEN, baseAmountOut, address(this), 0);
 
         // 3. Borrow the money market borrow amount
         pool.borrow(QUOTE_TOKEN, _totalDebt, 2, 0, address(this));
 
-        emit debugUint("Quote token balance", IERC20(QUOTE_TOKEN).balanceOf(address(this)));
-        emit debugAddress("Quote token address", QUOTE_TOKEN);
+        // transfer leftover quote token to the owner
+        uint256 remainingQuoteBalance = quoteToken.balanceOf(address(this)) - _totalDebt;
+        if (remainingQuoteBalance > 0) {
+            quoteToken.safeTransfer(msg.sender, remainingQuoteBalance);
+        }
 
-
-        IERC20(QUOTE_TOKEN).safeIncreaseAllowance(address(pool), _totalDebt);
+        quoteToken.safeIncreaseAllowance(address(pool), _totalDebt);
     }
 
     /// @notice Removes from the leveraged position internally
