@@ -24,7 +24,7 @@ interface IMaster {
         bytes pathDefinition;
     }
 
-    function createPosition(NewPositionParams memory params) external;
+    function createPosition(NewPositionParams memory params) external returns (uint256 tokenId, address proxyAddress);
 
     function addToPosition(uint256 _tokenId, PositionParams memory params) external;
 
