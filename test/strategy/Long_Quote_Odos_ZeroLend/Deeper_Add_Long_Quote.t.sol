@@ -30,12 +30,16 @@ contract Deeper_Add_Long_Quote is Test, IERC721Receiver {
 
     /* %%%%%%%%%%%%%%%% ODOS API VARIABLES %%%%%%%%%%%%%%%% */
 
-    bytes odosAdd = hex"83bd37f90001176211869ca2b568f2a7d4ee941e073a821ee1ff0001e5d7c2a44ffddf6b295a15c148167daaaf5cf34f0411e1a3000801a8f66d2722ba70028f5c00017D2b63A9ab475397d9c247468803F25Cf6523B76000000014f81992FCe2E1846dD528eC0102e6eE1f61ed3e2000000000301020401799bd3130a0101010201000901010203ff0000000000000000000000586733678b9ac9da43dd7cb83bbb41d23677dfc3176211869ca2b568f2a7d4ee941e073a821ee1ffe5d7c2a44ffddf6b295a15c148167daaaf5cf34f00000000";
+    bytes odosAdd = hex"83bd37f90001176211869ca2b568f2a7d4ee941e073a821ee1ff0001e5d7c2a44ffddf6b295a15c148167daaaf5cf34f0411e1a3000801a86ab8b1e380c0028f5c00017D2b63A9ab475397d9c247468803F25Cf6523B76000000014f81992FCe2E1846dD528eC0102e6eE1f61ed3e2000000000301020401455b66200a0101010201000a0101030201ff00000000000000000000586733678b9ac9da43dd7cb83bbb41d23677dfc3176211869ca2b568f2a7d4ee941e073a821ee1ff7077f0cff76077d0ebb335b607db57440051055700000000";
 
     bytes odosRemove = hex'83bd37f90001e5d7c2a44ffddf6b295a15c148167daaaf5cf34f0001176211869ca2b568f2a7d4ee941e073a821ee1ff0738d7ea4c68000004035123f6028f5c0001d804BA88371A3f00dDaCA03Cbc2b6C47F38105FC000000014f81992FCe2E1846dD528eC0102e6eE1f61ed3e20000000003010203000a0101010200ff000000000000000000000000000000000000000000d5539d0360438a66661148c633a9f0965e482845e5d7c2a44ffddf6b295a15c148167daaaf5cf34f000000000000000000000000000000000000000000000000';
 
     bytes odosClose = hex'83bd37f90001e5d7c2a44ffddf6b295a15c148167daaaf5cf34f0001176211869ca2b568f2a7d4ee941e073a821ee1ff080132584c89e56f4d0411e00b82028f5c0001d804BA88371A3f00dDaCA03Cbc2b6C47F38105FC000000014f81992FCe2E1846dD528eC0102e6eE1f61ed3e20000000003010203000a0101010200ff000000000000000000000000000000000000000000586733678b9ac9da43dd7cb83bbb41d23677dfc3e5d7c2a44ffddf6b295a15c148167daaaf5cf34f000000000000000000000000000000000000000000000000';
     
+    // incorrect path definitions
+
+    bytes odosAddIncorrect = hex'83bd37f90001176211869ca2b568f2a7d4ee941e073a821ee1ff0001e5d7c2a44ffddf6b295a15c148167daaaf5cf34f0411490c8008019b799bb62c1ef0028f5c00017D2b63A9ab475397d9c247468803F25Cf6523B76000000014f81992FCe2E1846dD528eC0102e6eE1f61ed3e2000000000802040a0133e7783c0a0100010201018b1fd4c60a0200030201000a030104020104000002080000050601c08c3ab80a0301070801000d0301090801ff00000000d4d4d99b26e7c96c70f32b417870aad2d51374a5176211869ca2b568f2a7d4ee941e073a821ee1ffefd5ec2cc043e3bd3c840f7998cc42ee712700ba7077f0cff76077d0ebb335b607db5744005105578b1251076f23ffa2a2a6459583c587c1cdbb2c6e7d43aabc515c356145049227cee54b608342c0ad1947b87d35e9f1cd53cede1ad6f7be44c12212b8a219439258ca9da29e9cc4ce5596924745e12b9363d4904e63571884b7930bb14a810141ac518683000000000000000000000000';
+
     /* %%%%%%%%%%%%%%%% ODOS API VARIABLES %%%%%%%%%%%%%%%% */
 
     function setUp() public {
@@ -121,6 +125,34 @@ contract Deeper_Add_Long_Quote is Test, IERC721Receiver {
         (uint256 tokenId, address proxyAddress) = IMaster(address(master)).createPosition(params);
 
         IProxy(proxyAddress).addToPosition(100 * 10**6, 0.061 ether, odosAdd);
+
+    }
+
+    // does not swap the entire in amount, should refund the user the leftover USDC
+    function testNotSwapFullAmount() public {
+
+        IMaster.NewPositionParams memory params = IMaster.NewPositionParams({
+            implementation: "LONG_QUOTE_ODOS_ZEROLEND",
+            quoteToken: USDCAddress,
+            baseToken: WETHAddress
+        });
+
+        (uint256 tokenId, address proxyAddress) = IMaster(address(master)).createPosition(params);
+
+        IMaster.PositionParams memory position = IMaster.PositionParams({
+            marginAmount: 100 * 10**6,
+            flashLoanAmount: 200 * 10**6,
+            pathDefinition: odosAddIncorrect // with 10000000 not used to swap in
+        });
+
+        deal(USDCAddress, (address(this)), 100 * 10**6, true);
+
+        IERC20(USDCAddress).approve(address(master), 100 * 10**6);
+
+        IMaster(address(master)).addToPosition(tokenId, position);
+
+        assertEq(IERC20(USDCAddress).balanceOf(address(this)), 10000000);
+
 
     }
 
