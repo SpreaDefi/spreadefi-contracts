@@ -302,7 +302,10 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, SharedStorage {
         // transfer leftover quote token to the owner
         uint256 remainingQuoteBalance = quoteToken.balanceOf(address(this)) - _totalDebt;
         if (remainingQuoteBalance > 0) {
-            quoteToken.safeTransfer(msg.sender, remainingQuoteBalance);
+            emit debugUint("REMAINING QUOTE BALANCE", remainingQuoteBalance);
+            IERC721A leverageNFT = IERC721A(centralRegistry.core("LEVERAGE_NFT"));
+            address NFTOwner = leverageNFT.ownerOf(tokenId);
+            quoteToken.safeTransfer(NFTOwner, remainingQuoteBalance);
         }
 
         quoteToken.safeIncreaseAllowance(address(pool), _totalDebt);
