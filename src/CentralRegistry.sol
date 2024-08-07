@@ -8,14 +8,13 @@ import "./interfaces/IMaster.sol";
 /// @dev This contract uses mappings to store addresses related to different components of the system.
 
 contract CentralRegistry {
-
     /// @notice Address of the admin
     address public admin;
 
     /// @notice Mapping of implementation names to their addresses
     mapping(string => address) public implementations;
 
-     /// @notice Mapping of protocol names to their addresses
+    /// @notice Mapping of protocol names to their addresses
     mapping(string => address) public protocols;
 
     /// @notice Mapping of core component names to their addresses
@@ -29,20 +28,29 @@ contract CentralRegistry {
 
     /// @notice Constructor to set the initial admin of the contract
     constructor() {
+        // NOTE: Not sure if we want to default it to msg.sender , Deployer may be a seperate account then the admin, admin would be a hardware wallet or multisig generally
         admin = msg.sender;
     }
-    
+
+    // NOTE: Add a method to change the admin if needed only by the older Admin
+
     /// @notice Adds an implementation address to the registry
     /// @param _name The name of the implementation
     /// @param _implementation The address of the implementation
-    function addImplementation(string calldata _name, address _implementation) public onlyAdmin {
+    function addImplementation(
+        string calldata _name,
+        address _implementation
+    ) public onlyAdmin {
         implementations[_name] = _implementation;
     }
 
     /// @notice Adds a protocol address to the registry
     /// @param _name The name of the protocol
     /// @param _protocol The address of the protocol
-    function addProtocol(string calldata _name, address _protocol) public onlyAdmin {
+    function addProtocol(
+        string calldata _name,
+        address _protocol
+    ) public onlyAdmin {
         protocols[_name] = _protocol;
     }
 

@@ -7,8 +7,9 @@ import "src/interfaces/ICentralRegistry.sol";
 /// @title LeveragedNFT Contract
 /// @notice This contract implements an ERC721A token to represent leveraged positions.
 /// @dev The contract interacts with the CentralRegistry to validate and manage core component addresses.
-contract LeveragedNFT is ERC721A {
+// NOTE : ERC721 & ERC721A only have considerable differences in case of multiiple NFT minting in same tx , for us even ERC721 works, just can be thought about
 
+contract LeveragedNFT is ERC721A {
     /// @notice The central registry contract instance
     ICentralRegistry public centralRegistry;
 
@@ -22,12 +23,11 @@ contract LeveragedNFT is ERC721A {
         _;
     }
 
-
     /// @notice Constructor to set the central registry address and initialize the ERC721A token
     /// @param _centralRegistry The address of the central registry contract
+    // NOTE : Confirm the token name and symbol once
     constructor(address _centralRegistry) ERC721A("LeveragedNFT", "LEVNFT") {
         centralRegistry = ICentralRegistry(_centralRegistry);
-       
     }
 
     /// @notice Mints a new leveraged NFT
@@ -35,10 +35,12 @@ contract LeveragedNFT is ERC721A {
     /// @param _to The address that will own the minted NFT
     /// @param _proxy The address of the proxy contract associated with the NFT
     /// @return tokenId The ID of the newly minted NFT
-    function mint(address _to, address _proxy) external onlyFactory returns (uint256 tokenId) {
+    function mint(
+        address _to,
+        address _proxy
+    ) external onlyFactory returns (uint256 tokenId) {
         tokenId = _currentIndex;
         tokenIdToProxy[tokenId] = _proxy;
         _safeMint(_to, 1);
     }
-    
 }

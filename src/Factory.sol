@@ -11,8 +11,7 @@ import "src/interfaces/ICentralRegistry.sol";
 /// @dev Uses the CentralRegistry to obtain addresses of core components.
 
 contract Factory {
-
-     /// @notice The central registry contract instance
+    /// @notice The central registry contract instance
     ICentralRegistry public centralRegistry;
 
     /// @notice Error for unauthorized access
@@ -22,7 +21,9 @@ contract Factory {
     modifier onlyMaster() {
         address masterAddress = centralRegistry.core("MASTER");
 
-        if(msg.sender != masterAddress) revert();
+        // NOTE : Reverts should give an error generally : revert("UNAUTHORIZED: ONLY MASTER");
+        // NOTE : or user require(msg.sender == masterAddress, "UNAUTHORIZED: ONLY MASTER");
+        if (msg.sender != masterAddress) revert();
         _;
     }
 
@@ -31,7 +32,7 @@ contract Factory {
     constructor(address _centralRegistry) {
         centralRegistry = ICentralRegistry(_centralRegistry);
     }
-    
+
     /// @notice Creates a new proxy contract and mints a leverage NFT
     /// @dev This function can only be called by the master contract
     /// @param _to The address that will own the leverage NFT
@@ -41,19 +42,28 @@ contract Factory {
     /// @return tokenId The ID of the newly minted leverage NFT
     /// @return proxyAddress The address of the newly created proxy contract
     function createProxy(
-        address _to, 
-        address _implementation, 
-        address _quoteToken, 
-        address _baseToken) onlyMaster external returns(uint256 tokenId, address proxyAddress) {
-
+        address _to,
+        address _implementation,
+        address _quoteToken,
+        address _baseToken
+    ) external onlyMaster returns (uint256 tokenId, address proxyAddress) {
+        // NOTE : Aren't we supposed to use Clones here the minimal proxy pattern?
+        // NOTE : They may or may not be immutable but preferabbly immutable as it will cost less for new deployments
         Proxy proxy = new Proxy(_implementation);
 
         proxyAddress = address(proxy);
 
-        ILeverageNFT leverageNFT = ILeverageNFT(centralRegistry.core("LEVERAGE_NFT"));
+        ILeverageNFT leverageNFT = ILeverageNFT(
+            centralRegistry.core("LEVERAGE_NFT")
+        );
 
         tokenId = leverageNFT.mint(_to, proxyAddress);
 
-        IProxy(proxyAddress).initialize(address(centralRegistry), tokenId, _quoteToken, _baseToken);
+        IProxy(proxyAddress).initialize(
+            address(centralRegistry),
+            tokenId,
+            _quoteToken,
+            _baseToken
+        );
     }
 }

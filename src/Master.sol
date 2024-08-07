@@ -14,7 +14,6 @@ import "./interfaces/IFactory.sol";
 /// @notice This contract is the main entry point for users of the protocol to create, manage, and close leveraged positions.
 /// @dev Interacts with the CentralRegistry, Factory, LeveragedNFT, and Proxy contracts to handle leveraged positions.
 contract Master {
-
     using SafeERC20 for IERC20;
 
     /// @notice The central registry contract instance
@@ -54,21 +53,32 @@ contract Master {
     /// @dev Modifier to restrict access to the owner of the NFT
     modifier onlyNFTOwner(uint256 tokenId) {
         address leverageNFTAddress = centralRegistry.core("LEVERAGE_NFT");
-        if(IERC721A(address(leverageNFTAddress)).ownerOf(tokenId) != msg.sender) revert InvalidTokenOwner();
+
+        // NOTE: Follow a single method require or revert
+        if (
+            IERC721A(address(leverageNFTAddress)).ownerOf(tokenId) != msg.sender
+        ) revert InvalidTokenOwner();
         _;
     }
 
+    // NOTE : Create and Add position function
+
+    // NOTE : Internal functions start with _ , good practice
     /// @notice Validates the parameters for creating a new position
     /// @dev Reverts if any of the parameters are invalid
     /// @param params The parameters for creating a new position
-    function validatePositionParams(NewPositionParams memory params) internal view returns (address) {
-        address implementationAddress = centralRegistry.implementations(params.implementation);
-        if (implementationAddress == address(0)) revert ImplementationNotFound();
+    function validatePositionParams(
+        NewPositionParams memory params
+    ) internal view returns (address) {
+        address implementationAddress = centralRegistry.implementations(
+            params.implementation
+        );
+        if (implementationAddress == address(0))
+            revert ImplementationNotFound();
         if (params.quoteToken == address(0)) revert ZeroAddress();
         if (params.baseToken == address(0)) revert ZeroAddress();
 
         return implementationAddress;
-
     }
 
     /// @notice Creates a new leveraged position
@@ -76,32 +86,47 @@ contract Master {
     /// @param params The parameters for creating a new position
     /// @return tokenId The ID of the newly minted leverage NFT
     /// @return proxyAddress The address of the newly created proxy contract
-    function createPosition(NewPositionParams memory params) public returns (uint256 tokenId, address proxyAddress) {
-
+    function createPosition(
+        NewPositionParams memory params
+    ) public returns (uint256 tokenId, address proxyAddress) {
+        // NOTE : a Big vulnerability I see here is allowing users to select their own Implementation name, there is not restriction in that , they could potentially access a malicious implementation or something
         address implementationAddress = validatePositionParams(params);
 
-        (tokenId, proxyAddress) = _createPosition(params.quoteToken, params.baseToken, implementationAddress);
-        
+        (tokenId, proxyAddress) = _createPosition(
+            params.quoteToken,
+            params.baseToken,
+            implementationAddress
+        );
     }
 
-    function _createPosition(address _quoteToken, address _baseToken, address _implementation)
-        internal returns (uint256 tokenId, address proxyAddress) 
-    {
-
+    function _createPosition(
+        address _quoteToken,
+        address _baseToken,
+        address _implementation
+    ) internal returns (uint256 tokenId, address proxyAddress) {
         IFactory factory = IFactory(centralRegistry.core("FACTORY"));
 
-        (tokenId, proxyAddress) = factory.createProxy(msg.sender, _implementation, _quoteToken, _baseToken);
-
-    
+        (tokenId, proxyAddress) = factory.createProxy(
+            msg.sender,
+            _implementation,
+            _quoteToken,
+            _baseToken
+        );
     }
 
     /// @notice Adds to an existing leveraged position
     /// @dev Ensures the caller is the owner of the NFT before adding to the position
     /// @param _tokenId The ID of the leverage NFT
     /// @param _positionParams The parameters for adding to the position
-    function addToPosition(uint256 _tokenId, PositionParams memory _positionParams) onlyNFTOwner(_tokenId) public {
+    function addToPosition(
+        uint256 _tokenId,
+        PositionParams memory _positionParams
+    ) public onlyNFTOwner(_tokenId) {
         emit debugString("Adding to position");
-        ILeverageNFT leverageNFT = ILeverageNFT(centralRegistry.core("LEVERAGE_NFT"));
+        ILeverageNFT leverageNFT = ILeverageNFT(
+            centralRegistry.core("LEVERAGE_NFT")
+        );
+
         address proxyAddress = leverageNFT.tokenIdToProxy(_tokenId);
 
         IERC20 marginToken;
@@ -111,38 +136,62 @@ contract Master {
         if (marginType == 0) {
             address quoteToken = IProxy(proxyAddress).QUOTE_TOKEN();
             marginToken = IERC20(quoteToken);
-            marginToken.safeTransferFrom(msg.sender, address(this), marginAmount);
+            marginToken.safeTransferFrom(
+                msg.sender,
+                address(this),
+                marginAmount
+            );
         } else if (marginType == 1) {
             address baseToken = IProxy(proxyAddress).BASE_TOKEN();
             marginToken = IERC20(baseToken);
-            marginToken.safeTransferFrom(msg.sender, address(this), marginAmount);
+            marginToken.safeTransferFrom(
+                msg.sender,
+                address(this),
+                marginAmount
+            );
         } else {
             revert InvalidMarginType();
         }
 
+        // NOTE: Don't understand why transfer to master first and then proxy, could directly send it to the proxy , won't matter
         marginToken.safeIncreaseAllowance(proxyAddress, marginAmount);
 
-        IProxy(proxyAddress).addToPosition(marginAmount, _positionParams.flashLoanAmount,_positionParams.pathDefinition);
+        IProxy(proxyAddress).addToPosition(
+            marginAmount,
+            _positionParams.flashLoanAmount,
+            _positionParams.pathDefinition
+        );
     }
 
-    function removeFromPosition(uint256 _tokenId,PositionParams memory params) onlyNFTOwner(_tokenId) public {
-        ILeverageNFT leverageNFT = ILeverageNFT(centralRegistry.core("LEVERAGE_NFT"));
+    function removeFromPosition(
+        uint256 _tokenId,
+        PositionParams memory params
+    ) public onlyNFTOwner(_tokenId) {
+        ILeverageNFT leverageNFT = ILeverageNFT(
+            centralRegistry.core("LEVERAGE_NFT")
+        );
         address proxyAddress = leverageNFT.tokenIdToProxy(_tokenId);
 
-        IProxy(proxyAddress).removeFromPosition(params.marginAmount, params.flashLoanAmount, params.pathDefinition);
+        IProxy(proxyAddress).removeFromPosition(
+            params.marginAmount,
+            params.flashLoanAmount,
+            params.pathDefinition
+        );
     }
 
     /// @notice Closes an existing leveraged position
     /// @dev Ensures the caller is the owner of the NFT before closing the position
     /// @param _tokenId The ID of the leverage NFT
     /// @param _transactionData The transaction data for closing the position
-    function closePosition(uint256 _tokenId, bytes memory _transactionData) onlyNFTOwner(_tokenId) public {
-
-        ILeverageNFT leverageNFT = ILeverageNFT(centralRegistry.core("LEVERAGE_NFT"));
+    function closePosition(
+        uint256 _tokenId,
+        bytes memory _transactionData
+    ) public onlyNFTOwner(_tokenId) {
+        ILeverageNFT leverageNFT = ILeverageNFT(
+            centralRegistry.core("LEVERAGE_NFT")
+        );
         address proxyAddress = leverageNFT.tokenIdToProxy(_tokenId);
 
         IProxy(proxyAddress).closePosition(_transactionData);
-
-
     }
 }
