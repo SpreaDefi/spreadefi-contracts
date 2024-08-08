@@ -43,11 +43,7 @@ contract Proxy {
     /// @dev This function will catch any call to the contract and forward it to the implementation
     fallback() external payable virtual {
         _delegate(implementation);
-    }
 
-    /// @notice Receive function to handle plain Ether transfers
-    /// @dev This function will catch any plain Ether transfers and forward them to the implementation
-    receive() external payable virtual {
-        _delegate(implementation);
     }
+    
 }

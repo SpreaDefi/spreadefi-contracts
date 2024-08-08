@@ -136,8 +136,8 @@ contract Short_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, SharedStorage {
         // borrow base currency using quote token as collateral
         pool.borrow(BASE_TOKEN, _totalDebt, 2, 0, address(this)); // enter the input amount
         
-        // approve the quote token to the Zerolend pool
-        baseToken.safeIncreaseAllowance(poolAddress, _totalDebt);
+        // reset allowances
+        quoteToken.approve(poolAddress, 0);
 
     }
 
@@ -212,7 +212,9 @@ contract Short_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, SharedStorage {
             quoteToken.safeTransfer(NFTOwner, marginReturn);
         }
 
-        emit debugString("end");
+        // reset allowances
+        quoteToken.approve(odosRouterAddress, 0);
+        baseToken.approve(poolAddress, 0);
 
        
 
@@ -287,6 +289,10 @@ contract Short_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, SharedStorage {
             emit debugUint("leftover quote", leftoverQuote);
             IERC20(QUOTE_TOKEN).safeTransfer(NFTOwner, leftoverQuote);
         }
+
+        // reset allowances
+        baseToken.approve(poolAddress, 0);
+        quoteToken.approve(odosRouterAddress, 0);
 
     }
 

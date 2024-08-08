@@ -28,8 +28,12 @@ contract CentralRegistry {
     }
 
     /// @notice Constructor to set the initial admin of the contract
-    constructor() {
-        admin = msg.sender;
+    constructor(address _admin) {
+        admin = _admin;
+    }
+
+    function changeAdmin(address _newAdmin) public onlyAdmin {
+        admin = _newAdmin;
     }
     
     /// @notice Adds an implementation address to the registry

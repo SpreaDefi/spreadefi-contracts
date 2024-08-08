@@ -136,7 +136,9 @@ contract Short_Base_Odos_Zerolend is SharedStorage, IFlashLoanSimpleReceiver {
             baseToken.safeTransfer(NFTOwner, leftoverBase);
         }
 
-        baseToken.safeIncreaseAllowance(poolAddress, _totalDebt);
+        // reset approvals
+        baseToken.approve(odosRouterAddress, 0);
+        quoteToken.approve(poolAddress, 0);
         
     }
 
@@ -191,6 +193,11 @@ contract Short_Base_Odos_Zerolend is SharedStorage, IFlashLoanSimpleReceiver {
             address NFTOwner = leverageNFT.ownerOf(tokenId);
             baseToken.safeTransfer(NFTOwner, marginReturn);
         }
+
+        // reset approvals
+        baseToken.approve(poolAddress, 0);
+        quoteToken.approve(odosRouterAddress, 0);
+        quoteToken.approve(poolAddress, 0);
     }
 
     function closePosition(bytes calldata _odosTransactionData) onlyMaster external {
@@ -253,8 +260,9 @@ contract Short_Base_Odos_Zerolend is SharedStorage, IFlashLoanSimpleReceiver {
             quoteToken.safeTransfer(NFTOwner, leftoverQuote);
         }
 
-
-
+        // reset approvals
+        baseToken.approve(poolAddress, 0);
+        quoteToken.approve(odosRouterAddress, 0);
         
     }
 

@@ -275,6 +275,7 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, SharedStorage {
     ) internal {
 
         IERC20 quoteToken = IERC20(QUOTE_TOKEN);
+        IERC20 baseToken = IERC20(BASE_TOKEN);
 
         uint256 swapInAmount = _flashLoanAmount + _marginAddAmount;
 
@@ -286,14 +287,13 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, SharedStorage {
         quoteToken.safeIncreaseAllowance(odosRouterAddress, swapInAmount);
 
         // 1. Swap the flash loaned (quote) amount + margin (quote) for the base token
-        // IERC20(QUOTE_TOKEN).safeIncreaseAllowance(odosRouterAddress, tokenInAmount);
         (uint256 _marginAmountIn,uint256 baseAmountOut) = _swapQuoteForBase(_transactionData);
 
         // 2. Deposit the base token to the money market
         address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
         IPool pool = IPool(poolAddress);
 
-        IERC20(BASE_TOKEN).safeIncreaseAllowance(address(poolAddress), baseAmountOut);
+        baseToken.safeIncreaseAllowance(poolAddress, baseAmountOut);
         pool.supply(BASE_TOKEN, baseAmountOut, address(this), 0);
 
         // 3. Borrow the money market borrow amount
@@ -308,7 +308,11 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, SharedStorage {
             quoteToken.safeTransfer(NFTOwner, remainingQuoteBalance);
         }
 
-        quoteToken.safeIncreaseAllowance(address(pool), _totalDebt);
+        // reset allowances
+        quoteToken.approve(odosRouterAddress, 0);
+        baseToken.approve(poolAddress, 0);
+
+
     }
 
     /// @notice Removes from the leveraged position internally
@@ -322,16 +326,18 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, SharedStorage {
         bytes memory _transactionData,
         uint256 _totalDebt
     ) internal {
-        // 0. Get reserve data
+
+        IERC20 quoteToken = IERC20(QUOTE_TOKEN);
+        IERC20 baseToken = IERC20(BASE_TOKEN);
         
         // 1. Repay part of the (QUOTE) borrowed amount to unlock collateral (BASE)
-        emit debugUint("quote token balance", IERC20(QUOTE_TOKEN).balanceOf(address(this)));
+        emit debugUint("quote token balance", quoteToken.balanceOf(address(this)));
         emit debugUint("flash loan amount", _flashLoanAmount);
         emit debugUint("trying to increase allowance of debt token...",0);
         ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
         address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
         IPool pool = IPool(poolAddress);
-        IERC20(QUOTE_TOKEN).safeIncreaseAllowance(poolAddress, _flashLoanAmount);
+        quoteToken.safeIncreaseAllowance(poolAddress, _flashLoanAmount);
         // IERC20(quoteVariableDebtTokenAddress).safeIncreaseAllowance(address(pool), flashLoanAmount);
         emit debugUint("Trying to repay...", 0);
 
@@ -348,13 +354,13 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, SharedStorage {
 
         // 3. Swap the unlocked base token for quote token
         address odosRouterAddress = centralRegistry.protocols("ODOS_ROUTER");
-        IERC20(BASE_TOKEN).safeIncreaseAllowance(odosRouterAddress, baseAmountUnlocked);
+        baseToken.safeIncreaseAllowance(odosRouterAddress, baseAmountUnlocked);
         (uint256 baseIn, uint256 quoteOut) = _swapBaseForQuote( _transactionData);
 
 
         // 4. Approve the pool to transfer the necessary amount for the flash loan repayment
         if (quoteOut > _totalDebt) {
-            IERC20(QUOTE_TOKEN).safeIncreaseAllowance(poolAddress, quoteOut);
+            quoteToken.safeIncreaseAllowance(poolAddress, quoteOut);
             emit debugUint("Amount out", quoteOut);
             uint256 remainingBalance = quoteOut - _totalDebt;
             emit debugUint("Remaining balance", remainingBalance);
@@ -364,8 +370,12 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, SharedStorage {
             address leveragedNFTAddress = centralRegistry.core("LEVERAGE_NFT");
             IERC721A leverageNFT = IERC721A(leveragedNFTAddress);
             address NFTOwner = leverageNFT.ownerOf(tokenId);
-            IERC20(QUOTE_TOKEN).safeTransfer(NFTOwner, remainingBalance);
-        } 
+            quoteToken.safeTransfer(NFTOwner, remainingBalance);
+        }
+
+        // reset allowances
+        quoteToken.approve(poolAddress, 0);
+        baseToken.approve(odosRouterAddress, 0);
     }
 
     /// @notice Closes the leveraged position internally
@@ -380,12 +390,15 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, SharedStorage {
 
         emit debugUint("_closePosition", 0);
 
+        IERC20 quoteToken = IERC20(QUOTE_TOKEN);
+        IERC20 baseToken = IERC20(BASE_TOKEN);
+
         ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
         address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
         IPool pool = IPool(poolAddress);
 
         // 1. Repay the (QUOTE) borrowed amount to unlock collateral (BASE)
-        IERC20(QUOTE_TOKEN).safeIncreaseAllowance(address(pool), _flashLoanAmount);
+        quoteToken.safeIncreaseAllowance(poolAddress, _flashLoanAmount);
         emit debugUint("Trying to repay...", 0);
         pool.repay(QUOTE_TOKEN, _flashLoanAmount, 2, address(this));
 
@@ -402,7 +415,7 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, SharedStorage {
 
         // 3. Swap the unlocked base token for quote token
         address odosRouterAddress = centralRegistry.protocols("ODOS_ROUTER");
-        IERC20(BASE_TOKEN).safeIncreaseAllowance(odosRouterAddress, baseAmountUnlocked);
+        baseToken.safeIncreaseAllowance(odosRouterAddress, baseAmountUnlocked);
         (uint256 amountIn, uint256 amountOut) = _swapBaseForQuote( _transactionData);
 
         emit debugUint("AMOUNT OUT AFTER SWAP", amountOut);
@@ -410,14 +423,18 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, SharedStorage {
 
         // 4. Approve the pool to transfer the necessary amount for the flash loan repayment
         if (amountOut > totalDebt) {
-            IERC20(QUOTE_TOKEN).safeIncreaseAllowance(address(pool), amountOut);
+            quoteToken.safeIncreaseAllowance(poolAddress, amountOut);
             uint256 remainingBalance = amountOut - totalDebt;
             emit debugUint("Remaining balance", remainingBalance);
             address leverageNFTAddress = centralRegistry.core("LEVERAGE_NFT");
             IERC721A leverageNFT = IERC721A(leverageNFTAddress);
             address NFTOwner = leverageNFT.ownerOf(tokenId);
-            IERC20(QUOTE_TOKEN).safeTransfer(NFTOwner, remainingBalance);
+            quoteToken.safeTransfer(NFTOwner, remainingBalance);
         }
+
+        // reset allowances
+        quoteToken.approve(poolAddress, 0);
+        baseToken.approve(odosRouterAddress, 0);
 
         
     }
