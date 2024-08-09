@@ -167,11 +167,7 @@ contract Short_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate
         if(quoteIn < _quoteReductionAmount) {
             // send to the user
             uint256 marginReturn = quoteAmountUnlocked - quoteIn;
-            emit debugUint("margin return", marginReturn);
-            address leverageNFTAddress = centralRegistry.core("LEVERAGE_NFT");
-            IERC721A leverageNFT = IERC721A(leverageNFTAddress);
-            address NFTOwner = leverageNFT.ownerOf(tokenId);
-            quoteToken.safeTransfer(NFTOwner, marginReturn);
+            quoteToken.safeTransfer(_getNFTOwner(), marginReturn);
         }
 
         // reset allowances
@@ -240,9 +236,7 @@ contract Short_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate
         uint256 baseBalance = IERC20(BASE_TOKEN).balanceOf(address(this));
         uint256 leftoverBase = baseBalance - _totalDebt;
 
-        address leverageNFTAddress = centralRegistry.core("LEVERAGE_NFT");
-        IERC721A leverageNFT = IERC721A(leverageNFTAddress);
-        address NFTOwner = leverageNFT.ownerOf(tokenId);
+        address NFTOwner = _getNFTOwner();
         if (leftoverBase > 0) {
             emit debugUint("leftover base", leftoverBase);
             IERC20(BASE_TOKEN).safeTransfer(NFTOwner, leftoverBase);

@@ -91,10 +91,7 @@ contract Short_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver 
         uint256 leftoverBase = baseBalance - _totalDebt;
 
         if (leftoverBase > 0) {
-            address leverageNFTAddress = ICentralRegistry(centralRegistryAddress).core("LEVERAGE_NFT");
-            IERC721A leverageNFT = IERC721A(leverageNFTAddress);
-            address NFTOwner = leverageNFT.ownerOf(tokenId);
-            baseToken.safeTransfer(NFTOwner, leftoverBase);
+            baseToken.safeTransfer(_getNFTOwner(), leftoverBase);
         }
 
         // reset approvals
@@ -149,10 +146,7 @@ contract Short_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver 
         }
         if (baseOut > _totalDebt) {
             uint256 marginReturn = baseOut - _totalDebt;
-            address leverageNFTAddress = centralRegistry.core("LEVERAGE_NFT");
-            IERC721A leverageNFT = IERC721A(leverageNFTAddress);
-            address NFTOwner = leverageNFT.ownerOf(tokenId);
-            baseToken.safeTransfer(NFTOwner, marginReturn);
+            baseToken.safeTransfer(_getNFTOwner(), marginReturn);
         }
 
         // reset approvals
@@ -211,9 +205,7 @@ contract Short_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver 
         uint256 baseBalance = IERC20(BASE_TOKEN).balanceOf(address(this));
         uint256 leftoverBase = baseBalance - _totalDebt;
 
-        address leverageNFTAddress = centralRegistry.core("LEVERAGE_NFT");
-        IERC721A leverageNFT = IERC721A(leverageNFTAddress);
-        address NFTOwner = leverageNFT.ownerOf(tokenId);
+        address NFTOwner = _getNFTOwner();
         if(leftoverBase > 0) {
             baseToken.safeTransfer(NFTOwner, leftoverBase);
         }

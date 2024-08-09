@@ -53,7 +53,7 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate 
 
         emit debugBytes("Input Transaction Data", _odosTransactionData);
 
-        IERC20(QUOTE_TOKEN).safeTransferFrom(msg.sender, address(this), _marginAmount); // rmemove later after testing maybe
+        IERC20(QUOTE_TOKEN).safeTransferFrom(_getNFTOwner(), address(this), _marginAmount); // rmemove later after testing maybe
 
         emit debugUint("Margin Amount", _marginAmount);
 
@@ -264,9 +264,7 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate 
         uint256 remainingQuoteBalance = quoteToken.balanceOf(address(this)) - _totalDebt;
         if (remainingQuoteBalance > 0) {
             emit debugUint("REMAINING QUOTE BALANCE", remainingQuoteBalance);
-            IERC721A leverageNFT = IERC721A(centralRegistry.core("LEVERAGE_NFT"));
-            address NFTOwner = leverageNFT.ownerOf(tokenId);
-            quoteToken.safeTransfer(NFTOwner, remainingQuoteBalance);
+            quoteToken.safeTransfer(_getNFTOwner(), remainingQuoteBalance);
         }
 
         // reset allowances
@@ -328,10 +326,8 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate 
             emit debugUint("Total debt", _totalDebt);
             emit debugUint("quote balance", IERC20(QUOTE_TOKEN).balanceOf(address(this)));
             emit debugAddress("this address", address(this));
-            address leveragedNFTAddress = centralRegistry.core("LEVERAGE_NFT");
-            IERC721A leverageNFT = IERC721A(leveragedNFTAddress);
-            address NFTOwner = leverageNFT.ownerOf(tokenId);
-            quoteToken.safeTransfer(NFTOwner, remainingBalance);
+     
+            quoteToken.safeTransfer(_getNFTOwner(), remainingBalance);
         }
 
         // reset allowances
@@ -387,10 +383,7 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate 
             quoteToken.safeIncreaseAllowance(poolAddress, amountOut);
             uint256 remainingBalance = amountOut - totalDebt;
             emit debugUint("Remaining balance", remainingBalance);
-            address leverageNFTAddress = centralRegistry.core("LEVERAGE_NFT");
-            IERC721A leverageNFT = IERC721A(leverageNFTAddress);
-            address NFTOwner = leverageNFT.ownerOf(tokenId);
-            quoteToken.safeTransfer(NFTOwner, remainingBalance);
+            quoteToken.safeTransfer(_getNFTOwner(), remainingBalance);
         }
 
         // reset allowances

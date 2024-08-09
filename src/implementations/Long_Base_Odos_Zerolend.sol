@@ -63,7 +63,7 @@ contract Long_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver {
     )
     override onlyMaster external {
 
-        IERC20(BASE_TOKEN).safeTransferFrom(msg.sender, address(this), _marginAmount);
+        IERC20(BASE_TOKEN).safeTransferFrom(_getNFTOwner(), address(this), _marginAmount);
 
         Action action = Action.ADD;
 
@@ -117,10 +117,7 @@ contract Long_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver {
         baseToken.approve(poolAddress, 0);
 
         if (leftoverBase > 0) {
-            address leverageNFTAddress = centralRegistry.core("LEVERAGE_NFT");
-            IERC721A leverageNFT = IERC721A(leverageNFTAddress);
-            address NFTOwner = leverageNFT.ownerOf(tokenId);
-            baseToken.safeTransfer(NFTOwner, leftoverBase);
+            baseToken.safeTransfer(_getNFTOwner(), leftoverBase);
         }  
 
     }
@@ -192,10 +189,7 @@ contract Long_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver {
             emit debugUint("Base in is less than base reduction amount", baseIn);
             // send to user
             uint256 marginReturn = _baseReductionAmount - baseIn;
-            address leverageNFTAddress = centralRegistry.core("LEVERAGE_NFT");
-            IERC721A leverageNFT = IERC721A(leverageNFTAddress);
-            address NFTOwner = leverageNFT.ownerOf(tokenId);
-            baseToken.safeTransfer(NFTOwner, marginReturn);
+            baseToken.safeTransfer(_getNFTOwner(), marginReturn);
 
         }
 
@@ -267,10 +261,8 @@ contract Long_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver {
         uint256 quoteBalance = quoteToken.balanceOf(address(this));
         uint256 leftoverQuote = quoteBalance - _totalDebt;
 
-        address leverageNFTAddress = centralRegistry.core("LEVERAGE_NFT");
-        IERC721A leverageNFT = IERC721A(leverageNFTAddress);
-        address NFTOwner = leverageNFT.ownerOf(tokenId);
-
+        address NFTOwner = _getNFTOwner();
+        
         if (leftoverBase > 0) {
             emit debugUint("leftover base", leftoverBase);
             baseToken.safeTransfer(NFTOwner, leftoverBase);
