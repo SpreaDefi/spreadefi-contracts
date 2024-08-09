@@ -100,6 +100,26 @@ contract Short_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver 
         
     }
 
+    function createAndAddToPosition(
+        uint256 _marginAmount,
+        uint256 _flashLoanAmount,
+        bytes memory _odosTransactionData
+    ) override onlyMaster external {
+
+        IERC20(BASE_TOKEN).safeTransferFrom(msg.sender, address(this), _marginAmount);
+
+        Action action = Action.ADD;
+
+        bytes memory data = abi.encode(action, _marginAmount, _odosTransactionData);
+
+        ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
+
+        address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
+
+        IPool(poolAddress).flashLoanSimple(address(this), QUOTE_TOKEN, _flashLoanAmount, data, 0);
+
+    }
+
     function removeFromPosition(
         uint256 _quoteReductionAmount,
         uint256 _flashLoanAmount,

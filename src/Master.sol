@@ -71,6 +71,36 @@ contract Master {
 
     }
 
+    function createAndAddToPosition(NewPositionParams memory _newPositionParams, PositionParams memory _positionParams) public returns (uint256 tokenId, address proxyAddress) {
+        address implementationAddress = validatePositionParams(_newPositionParams);
+
+        (tokenId, proxyAddress) = _createPosition(_newPositionParams.quoteToken, _newPositionParams.baseToken, implementationAddress);
+
+        IProxy proxy = IProxy(proxyAddress);
+
+        IERC20 marginToken;
+        uint256 marginAmount = _positionParams.marginAmount;
+
+        uint256 marginType = proxy.MARGIN_TYPE();
+        
+        if (marginType == 0) {
+            address quoteToken = proxy.QUOTE_TOKEN();
+            marginToken = IERC20(quoteToken);
+            marginToken.safeTransferFrom(msg.sender, address(this), marginAmount);
+        } else if (marginType == 1) {
+            address baseToken = proxy.BASE_TOKEN();
+            marginToken = IERC20(baseToken);
+            marginToken.safeTransferFrom(msg.sender, address(this), marginAmount);
+        } else {
+            revert InvalidMarginType();
+        }
+
+        marginToken.safeIncreaseAllowance(proxyAddress, marginAmount);
+
+        proxy.createAndAddToPosition(marginAmount, _positionParams.flashLoanAmount, _positionParams.pathDefinition);
+
+    }
+
     /// @notice Creates a new leveraged position
     /// @dev Validates parameters and calls internal function to create the position
     /// @param params The parameters for creating a new position
@@ -104,25 +134,7 @@ contract Master {
         ILeverageNFT leverageNFT = ILeverageNFT(centralRegistry.core("LEVERAGE_NFT"));
         address proxyAddress = leverageNFT.tokenIdToProxy(_tokenId);
 
-        IERC20 marginToken;
-        uint256 marginAmount = _positionParams.marginAmount;
-
-        uint256 marginType = IProxy(proxyAddress).MARGIN_TYPE();
-        if (marginType == 0) {
-            address quoteToken = IProxy(proxyAddress).QUOTE_TOKEN();
-            marginToken = IERC20(quoteToken);
-            marginToken.safeTransferFrom(msg.sender, address(this), marginAmount);
-        } else if (marginType == 1) {
-            address baseToken = IProxy(proxyAddress).BASE_TOKEN();
-            marginToken = IERC20(baseToken);
-            marginToken.safeTransferFrom(msg.sender, address(this), marginAmount);
-        } else {
-            revert InvalidMarginType();
-        }
-
-        marginToken.safeIncreaseAllowance(proxyAddress, marginAmount);
-
-        IProxy(proxyAddress).addToPosition(marginAmount, _positionParams.flashLoanAmount,_positionParams.pathDefinition);
+        IProxy(proxyAddress).addToPosition(_positionParams.marginAmount, _positionParams.flashLoanAmount,_positionParams.pathDefinition);
     }
 
     function removeFromPosition(uint256 _tokenId,PositionParams memory params) onlyNFTOwner(_tokenId) public {
