@@ -21,9 +21,11 @@ contract CentralRegistry {
     /// @notice Mapping of core component names to their addresses
     mapping(string => address) public core;
 
+    error OnlyAdmin();
+
     /// @dev Modifier to restrict access to only the admin
     modifier onlyAdmin() {
-        require(msg.sender == admin, "CentralRegistry: Only admin");
+        if (msg.sender != admin) revert OnlyAdmin();
         _;
     }
 

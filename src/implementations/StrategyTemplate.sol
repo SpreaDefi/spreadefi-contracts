@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "src/interfaces/ICentralRegistry.sol";
 
-abstract contract Strategy_Base {
+abstract contract StrategyTemplate {
     /// @notice The central registry contract address
     address public centralRegistryAddress;
 
@@ -22,6 +22,8 @@ abstract contract Strategy_Base {
     /// @notice Errors for the strategy contract
     error AlreadyInitialized();
     error Unauthorized();
+    error NotEnoughAmountout();
+    error SwapFailed();
 
     /// @notice Initializes the strategy with the central registry address, token ID, quote token, and base token
     /// @dev This function can only be called by the factory contract
@@ -52,13 +54,6 @@ abstract contract Strategy_Base {
         _;
     }
 
-    /// @dev Modifier to restrict access to the Zerolend pool
-    modifier onlyZerolendPool() {
-        address poolAddress = ICentralRegistry(centralRegistryAddress).protocols("ZEROLEND_POOL");
-        if (msg.sender != poolAddress) revert Unauthorized();
-        _;
-    }
-
     /// @dev Modifier to restrict access to the contract itself
     modifier onlySelf(address _initiator) {
         if (address(this) != _initiator) revert Unauthorized();
@@ -69,7 +64,16 @@ abstract contract Strategy_Base {
         uint256 _marginAmount,
         uint256 _flashLoanAmount,
         bytes memory _odosTransactionData
-        ) onlyMaster external virtual {
+        ) onlyMaster external virtual {}
 
-    }
+    function removeFromPosition(
+        uint256 _baseReduction, 
+        uint256 _flashLoanAmount,
+        bytes calldata _odosTransactionData) onlyMaster external virtual {}
+
+    function closePosition(bytes calldata _odosTransactionData) onlyMaster external {}
+
+
+
+
 }

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "src/libraries/openzeppelin/token/SafeERC20.sol";
-import "./Shared_Storage.sol";
+import "./StrategyTemplate.sol";
 import "src/interfaces/external/zerolend/IFlashLoanSimpleReceiver.sol";
 import "src/interfaces/external/zerolend/IPoolAddressProvider.sol";
 import "src/interfaces/external/zerolend/IPool.sol";
@@ -12,7 +12,7 @@ import "src/interfaces/IERC721A.sol";
 import "src/interfaces/ICentralRegistry.sol";
 import {DataTypes} from "src/interfaces/external/zerolend/DataTypes.sol";
 
-contract Long_Base_Odos_Zerolend is SharedStorage, IFlashLoanSimpleReceiver {
+contract Long_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver {
     
     using SafeERC20 for IERC20;
 
@@ -21,53 +21,16 @@ contract Long_Base_Odos_Zerolend is SharedStorage, IFlashLoanSimpleReceiver {
         REMOVE,
         CLOSE
     }
-    
-    error Unauthorized();
 
     event debugString(string message);
     event debugBytes(string message, bytes data);
     event debugUint(string message, uint256 data);
-
-    modifier onlyFactory() {
-        _;
-        address factoryAddress = ICentralRegistry(centralRegistryAddress).core("FACTORY");
-        if (msg.sender != factoryAddress) revert Unauthorized();
-    }
-
-    /// @dev Modifier to restrict access to the master contract
-    modifier onlyMaster() {
-        address masterAddress = ICentralRegistry(centralRegistryAddress).core("MASTER");
-        if (msg.sender != masterAddress) revert Unauthorized();
-
-        _;
-    }
 
     /// @dev Modifier to restrict access to the Zerolend pool
     modifier onlyZerolendPool() {
         address poolAddress = ICentralRegistry(centralRegistryAddress).protocols("ZEROLEND_POOL");
         if (msg.sender != poolAddress) revert Unauthorized();
         _;
-    }
-
-    /// @dev Modifier to restrict access to the contract itself
-    modifier onlySelf(address _initiator) {
-        if (address(this) != _initiator) revert Unauthorized();
-        _;
-    }
-
-    /// @notice Initializes the strategy with the central registry address, token ID, quote token, and base token
-    /// @dev This function can only be called by the factory contract
-    /// @param _centralRegistry The address of the central registry contract
-    /// @param _tokenId The ID of the NFT token representing the position
-    /// @param _quoteToken The address of the quote token
-    /// @param _baseToken The address of the base tokens
-    function initialize(address _centralRegistry, uint256 _tokenId, address _quoteToken, address _baseToken) onlyFactory external {
-        centralRegistryAddress = _centralRegistry;
-        tokenId = _tokenId;
-        QUOTE_TOKEN = _quoteToken;
-        BASE_TOKEN = _baseToken;
-        MARGIN_TYPE = 1;
-
     }
 
     function _swapQuoteForBase(
@@ -98,7 +61,7 @@ contract Long_Base_Odos_Zerolend is SharedStorage, IFlashLoanSimpleReceiver {
         uint256 _flashLoanAmount,
         bytes memory _odosTransactionData
     )
-    onlyMaster external {
+    override onlyMaster external {
 
         IERC20(BASE_TOKEN).safeTransferFrom(msg.sender, address(this), _marginAmount);
 
@@ -166,7 +129,7 @@ contract Long_Base_Odos_Zerolend is SharedStorage, IFlashLoanSimpleReceiver {
         uint256 _baseReductionAmount,
         uint256 _flashLoanAmount,
         bytes memory _odosTransactionData
-    ) onlyMaster external {
+    ) override onlyMaster external {
             
             Action action = Action.REMOVE;
     
@@ -244,7 +207,7 @@ contract Long_Base_Odos_Zerolend is SharedStorage, IFlashLoanSimpleReceiver {
     }
 
 
-    function closePosition(bytes memory _odosTransactionData) onlyMaster external {
+    function closePosition(bytes memory _odosTransactionData) override onlyMaster external {
 
         (, address variableDebtTokenAddress) = _getReserveData(QUOTE_TOKEN);
 
@@ -298,7 +261,7 @@ contract Long_Base_Odos_Zerolend is SharedStorage, IFlashLoanSimpleReceiver {
         emit debugUint("quoteOut", quoteOut);
         emit debugUint("total debt", _totalDebt);
 
-        require (quoteOut >= _totalDebt, "Quote out is not equal to total debt");
+        if (!(quoteOut >= _totalDebt)) revert NotEnoughAmountout();
 
         uint256 leftoverBase = baseToken.balanceOf(address(this));
         uint256 quoteBalance = quoteToken.balanceOf(address(this));
@@ -396,7 +359,7 @@ contract Long_Base_Odos_Zerolend is SharedStorage, IFlashLoanSimpleReceiver {
 
         address odosRouterAddress = centralRegistry.protocols("ODOS_ROUTER");
         (bool success, bytes memory returnData) = odosRouterAddress.call(transactionData);
-        require(success, "Odos transaction execution failed");
+        if (!success) revert SwapFailed();
         emit debugString("Odos transaction executed successfully");
 
         return returnData;
