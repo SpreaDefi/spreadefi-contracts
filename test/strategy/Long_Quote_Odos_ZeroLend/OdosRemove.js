@@ -14,7 +14,7 @@ async function getQuote() {
         inputTokens: [
             {
                 tokenAddress: WETHAddress,
-                amount: '16000000000000000' // Amount in smallest unit (e.g., wei for ETH)
+                amount: '10500000000000000' // Amount in smallest unit (e.g., wei for ETH)
             }
         ],
         outputTokens: [

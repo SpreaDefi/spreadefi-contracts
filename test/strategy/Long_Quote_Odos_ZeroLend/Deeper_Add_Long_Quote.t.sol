@@ -44,7 +44,7 @@ contract Deeper_Add_Long_Quote is Test, IERC721Receiver {
 
     function setUp() public {
 
-        centralRegistry = new CentralRegistry();
+        centralRegistry = new CentralRegistry(address(this));
         master = new Master(address(centralRegistry));
         factory = new Factory(address(centralRegistry));
         leveragedNFT = new LeveragedNFT(address(centralRegistry));
@@ -100,7 +100,7 @@ contract Deeper_Add_Long_Quote is Test, IERC721Receiver {
         IMaster(address(master)).createPosition(params);
 
         IMaster.PositionParams memory positionParams = IMaster.PositionParams({
-            marginAmount: 100 * 10**6,
+            marginAmountOrCollateralReductionAmount: 100 * 10**6,
             flashLoanAmount: 0.061 ether,
             pathDefinition: odosAdd
         });
@@ -140,7 +140,7 @@ contract Deeper_Add_Long_Quote is Test, IERC721Receiver {
         (uint256 tokenId, address proxyAddress) = IMaster(address(master)).createPosition(params);
 
         IMaster.PositionParams memory position = IMaster.PositionParams({
-            marginAmount: 100 * 10**6,
+            marginAmountOrCollateralReductionAmount: 100 * 10**6,
             flashLoanAmount: 200 * 10**6,
             pathDefinition: odosAddIncorrect // with 10000000 not used to swap in
         });

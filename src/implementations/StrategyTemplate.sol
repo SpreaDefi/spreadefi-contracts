@@ -77,7 +77,7 @@ abstract contract StrategyTemplate {
         uint256 _marginAmount,
         uint256 _flashLoanAmount,
         bytes memory _odosTransactionData
-    ) onlyMaster external {}
+    ) virtual onlyMaster external {}
 
     function removeFromPosition(
         uint256 _baseReduction, 

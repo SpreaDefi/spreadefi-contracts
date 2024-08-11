@@ -1,66 +1,31 @@
-## Foundry
+0. run `anvil`
+im using the first provided public/private address for deployments and testing
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+## 1. deploy stakingLibrary
 
-Foundry consists of:
+command: forge create src/LibStakingStorage.sol:LibStakingStorage --rpc-url http://127.0.0.1:8545 --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+Result:  0x5FbDB2315678afecb367f032d93F642f64180aa3
 
-## Documentation
+## 2. deploy StakingViewsFacet
 
-https://book.getfoundry.sh/
+command: forge create src/MockStakingViewsFacet.sol:StakingViewsFacet --libraries src/LibStakingStorage.sol:LibStakingStorage:0x5FbDB2315678afecb367f032d93F642f64180aa3 --rpc-url http://127.0.0.1:8545 --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+ 
+Result: 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512
 
-## Usage
+## 3. deploy StakingBalancesFacet with StakingViewsFacet address as constructor argument
 
-### Build
+ command: forge create src/MockStakingBalancesFacet.sol:StakingBalancesFacet --constructor-args 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512 --libraries src/LibStakingStorage.sol:LibStakingStorage:0x5FbDB2315678afecb367f032d93F642f64180aa3 --rpc-url http://127.0.0.1:8545 --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+ 
+result: 0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0
 
-```shell
-$ forge build
-```
+## 4. deploy StakingBalancesViewsFacet
 
-### Test
+command: forge create src/MockStakingBalancesViewsFacet.sol:StakingBalancesViewsFacet --libraries src/LibStakingStorage.sol:LibStakingStorage:0x5FbDB2315678afecb367f032d93F642f64180aa3 --rpc-url http://127.0.0.1:8545 --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 
-```shell
-$ forge test
-```
+result: 0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
 
-### Format
+## 5. deploy StakingManager in test script with previousyl deployed addresses
+command: forge test --fork-url http://127.0.0.1:8545
 
-```shell
-$ forge fmt
-```
 
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```

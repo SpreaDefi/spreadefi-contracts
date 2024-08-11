@@ -41,7 +41,7 @@ contract Using_Proxy_Short_Base_Odos_ZeroLend_Test is Test, IERC721Receiver {
     /* %%%%%%%%%%%%%%%% ODOS API VARIABLES %%%%%%%%%%%%%%%% */
 
     function setUp() public {
-        centralRegistry = new CentralRegistry();
+        centralRegistry = new CentralRegistry(address(this));
         master = new Master(address(centralRegistry));
         factory = new Factory(address(centralRegistry));
         leveragedNFT = new LeveragedNFT(address(centralRegistry));

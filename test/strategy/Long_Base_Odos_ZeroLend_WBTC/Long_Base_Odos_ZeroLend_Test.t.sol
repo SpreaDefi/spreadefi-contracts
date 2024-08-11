@@ -48,7 +48,7 @@ contract Using_Proxy_Long_Base_Odos_ZeroLend_Test_WBTC is Test, IERC721Receiver 
 
     function setUp() public {
 
-        centralRegistry = new CentralRegistry();
+        centralRegistry = new CentralRegistry(address(this));
         master = new Master(address(centralRegistry));
         factory = new Factory(address(centralRegistry));
         leveragedNFT = new LeveragedNFT(address(centralRegistry));
