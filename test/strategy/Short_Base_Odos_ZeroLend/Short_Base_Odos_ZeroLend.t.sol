@@ -83,19 +83,19 @@ contract Using_Proxy_Short_Base_Odos_ZeroLend_Test is Test, IERC721Receiver {
             baseToken: WETHAddress
         });
 
-        IMaster(address(master)).createPosition(params);
+        (uint256 tokenId, address proxyAddress) = IMaster(address(master)).createPosition(params);
 
         uint256 nftBalance = leveragedNFT.balanceOf(address(this));
 
         assertEq(nftBalance, 1);
 
         IMaster.PositionParams memory positionParams = IMaster.PositionParams({
-            marginAmount: 0.03 ether,
+            marginAmountOrCollateralReductionAmount: 0.03 ether,
             flashLoanAmount: 0.061 ether,
             pathDefinition: odosAdd
         });
 
-        IERC20(WETHAddress).approve(address(master), 0.03 ether);
+        IERC20(WETHAddress).approve(proxyAddress, 0.03 ether);
 
         IMaster(address(master)).addToPosition(
             0,
@@ -114,19 +114,19 @@ contract Using_Proxy_Short_Base_Odos_ZeroLend_Test is Test, IERC721Receiver {
             baseToken: WETHAddress
         });
 
-        IMaster(address(master)).createPosition(params);
+        (uint256 tokenId, address proxyAddress) = IMaster(address(master)).createPosition(params);
 
         uint256 nftBalance = leveragedNFT.balanceOf(address(this));
 
         assertEq(nftBalance, 1);
 
         IMaster.PositionParams memory positionParams = IMaster.PositionParams({
-            marginAmount: 0.03 ether,
+            marginAmountOrCollateralReductionAmount: 0.03 ether,
             flashLoanAmount: 0.061 ether,
             pathDefinition: odosAdd
         });
 
-        IERC20(WETHAddress).approve(address(master), 0.03 ether);
+        IERC20(WETHAddress).approve(proxyAddress, 0.03 ether);
 
         IMaster(address(master)).addToPosition(
             0,
@@ -135,7 +135,7 @@ contract Using_Proxy_Short_Base_Odos_ZeroLend_Test is Test, IERC721Receiver {
 
         // lower exposure to eth
         IMaster.PositionParams memory removeParams = IMaster.PositionParams({
-            marginAmount: 32380000, // usdc price of 0.01 ether
+            marginAmountOrCollateralReductionAmount: 32380000, // usdc price of 0.01 ether
             flashLoanAmount: 0.01 ether,
             pathDefinition: odosRemove
         });
@@ -155,24 +155,25 @@ contract Using_Proxy_Short_Base_Odos_ZeroLend_Test is Test, IERC721Receiver {
             baseToken: WETHAddress
         });
 
-        IMaster(address(master)).createPosition(params);
+        (uint256 tokenId, address proxyAddress) = IMaster(address(master)).createPosition(params);
 
         uint256 nftBalance = leveragedNFT.balanceOf(address(this));
 
         assertEq(nftBalance, 1);
 
         IMaster.PositionParams memory positionParams = IMaster.PositionParams({
-            marginAmount: 0.03 ether,
+            marginAmountOrCollateralReductionAmount: 0.03 ether,
             flashLoanAmount: 0.061 ether,
             pathDefinition: odosAdd
         });
 
-        IERC20(WETHAddress).approve(address(master), 0.03 ether);
+        IERC20(WETHAddress).approve(proxyAddress, 0.03 ether);
 
         IMaster(address(master)).addToPosition(
             0,
             positionParams
         );
+
         
         IMaster(address(master)).closePosition(0, odosClose);
 

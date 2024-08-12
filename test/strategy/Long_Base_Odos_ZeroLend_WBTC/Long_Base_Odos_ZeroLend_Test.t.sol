@@ -36,6 +36,8 @@ contract Using_Proxy_Long_Base_Odos_ZeroLend_Test_WBTC is Test, IERC721Receiver 
     Factory factory;
     LeveragedNFT leveragedNFT;
 
+    address PROXY_ADDRESS;
+
     /* %%%%%%%%%%%%%%%% ODOS API VARIABLES %%%%%%%%%%%%%%%% */
 
     bytes odosAdd = hex"83bd37f90001176211869ca2b568f2a7d4ee941e073a821ee1ff00013aab2285ddcddad8edf438c1bab47e1a9d05a9b40450ddc070031e791d028f5c0001d804BA88371A3f00dDaCA03Cbc2b6C47F38105FC000000014f81992FCe2E1846dD528eC0102e6eE1f61ed3e200000000060202070161afb6040a0100010201018384be280a0100030201000d0100040201020a0001050600ff000000000000000000000000000000000000000000000000d5539d0360438a66661148c633a9f0965e482845176211869ca2b568f2a7d4ee941e073a821ee1ff586733678b9ac9da43dd7cb83bbb41d23677dfc35615a7b1619980f7d6b5e7f69f3dc093dfe0c95cf11bb479dc3daffe63989b6b95f6c119225dac28e5d7c2a44ffddf6b295a15c148167daaaf5cf34f0000000000000000";
@@ -77,19 +79,19 @@ contract Using_Proxy_Long_Base_Odos_ZeroLend_Test_WBTC is Test, IERC721Receiver 
             baseToken: WBTCAddress
         });
 
-        IMaster(address(master)).createPosition(params);
+        (uint256 tokenId, address proxyAddress) = IMaster(address(master)).createPosition(params);
 
         uint256 nftBalance = leveragedNFT.balanceOf(address(this));
 
         assertEq(nftBalance, 1);
 
         IMaster.PositionParams memory position = IMaster.PositionParams({
-            marginAmount: ONE_MILLION_SATS,
+            marginAmountOrCollateralReductionAmount: ONE_MILLION_SATS,
             flashLoanAmount: 1356710000,
             pathDefinition: odosAdd
         });
 
-        IERC20(WBTCAddress).approve(address(master), TEN_MILLION_SATS);
+        IERC20(WBTCAddress).approve(proxyAddress, TEN_MILLION_SATS);
 
         IMaster(address(master)).addToPosition(0, position);
     }
@@ -105,20 +107,19 @@ contract Using_Proxy_Long_Base_Odos_ZeroLend_Test_WBTC is Test, IERC721Receiver 
             baseToken: WBTCAddress
         });
 
-        IMaster(address(master)).createPosition(params);
+        (uint256 tokenId, address proxyAddress) = IMaster(address(master)).createPosition(params);
 
         uint256 nftBalance = leveragedNFT.balanceOf(address(this));
 
         assertEq(nftBalance, 1);
 
-        // increase the exposure to 0.03 BTC to a 3X Leveraged position
         IMaster.PositionParams memory position = IMaster.PositionParams({
-            marginAmount: ONE_MILLION_SATS,
-            flashLoanAmount: 1359640000, // 2M SATS in USDC price
+            marginAmountOrCollateralReductionAmount: ONE_MILLION_SATS,
+            flashLoanAmount: 1356710000,
             pathDefinition: odosAdd
         });
 
-        IERC20(WBTCAddress).approve(address(master), TEN_MILLION_SATS);
+        IERC20(WBTCAddress).approve(proxyAddress, TEN_MILLION_SATS);
 
         IMaster(address(master)).addToPosition(0, position);
 
@@ -134,7 +135,7 @@ contract Using_Proxy_Long_Base_Odos_ZeroLend_Test_WBTC is Test, IERC721Receiver 
         // 100.05% of 1 million satoshi = 1000500
 
         IMaster.PositionParams memory removeParams = IMaster.PositionParams({
-            marginAmount: 1000500,
+            marginAmountOrCollateralReductionAmount: 1000500,
             flashLoanAmount: 678360000,
             pathDefinition: odosRemove
         });
@@ -156,20 +157,19 @@ contract Using_Proxy_Long_Base_Odos_ZeroLend_Test_WBTC is Test, IERC721Receiver 
             baseToken: WBTCAddress
         });
 
-        IMaster(address(master)).createPosition(params);
+        (uint256 tokenId, address proxyAddress) = IMaster(address(master)).createPosition(params);
 
         uint256 nftBalance = leveragedNFT.balanceOf(address(this));
 
         assertEq(nftBalance, 1);
 
-        // increase the exposure to 0.03 BTC to a 3X Leveraged position
         IMaster.PositionParams memory position = IMaster.PositionParams({
-            marginAmount: ONE_MILLION_SATS,
-            flashLoanAmount: 1356710000, // 2M SATS in USDC price
+            marginAmountOrCollateralReductionAmount: ONE_MILLION_SATS,
+            flashLoanAmount: 1356710000,
             pathDefinition: odosAdd
         });
 
-        IERC20(WBTCAddress).approve(address(master), TEN_MILLION_SATS);
+        IERC20(WBTCAddress).approve(proxyAddress, TEN_MILLION_SATS);
 
         IMaster(address(master)).addToPosition(0, position);
 

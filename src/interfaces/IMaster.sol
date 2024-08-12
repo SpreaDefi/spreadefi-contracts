@@ -19,7 +19,7 @@ interface IMaster {
     }
 
     struct PositionParams {
-        uint256 marginAmount;
+        uint256 marginAmountOrCollateralReductionAmount;
         uint256 flashLoanAmount;
         bytes pathDefinition;
     }

@@ -46,7 +46,7 @@ contract Master {
 
     /// @notice Struct to define position parameters for modifying an existing position
     struct PositionParams {
-        uint256 marginAmount;
+        uint256 marginAmountOrCollateralReductionAmount;
         uint256 flashLoanAmount;
         bytes pathDefinition;
     }
@@ -79,7 +79,7 @@ contract Master {
         IProxy proxy = IProxy(proxyAddress);
 
         IERC20 marginToken;
-        uint256 marginAmount = _positionParams.marginAmount;
+        uint256 marginAmount = _positionParams.marginAmountOrCollateralReductionAmount;
 
         uint256 marginType = proxy.MARGIN_TYPE();
         
@@ -134,14 +134,14 @@ contract Master {
         ILeverageNFT leverageNFT = ILeverageNFT(centralRegistry.core("LEVERAGE_NFT"));
         address proxyAddress = leverageNFT.tokenIdToProxy(_tokenId);
 
-        IProxy(proxyAddress).addToPosition(_positionParams.marginAmount, _positionParams.flashLoanAmount,_positionParams.pathDefinition);
+        IProxy(proxyAddress).addToPosition(_positionParams.marginAmountOrCollateralReductionAmount, _positionParams.flashLoanAmount,_positionParams.pathDefinition);
     }
 
     function removeFromPosition(uint256 _tokenId,PositionParams memory params) onlyNFTOwner(_tokenId) public {
         ILeverageNFT leverageNFT = ILeverageNFT(centralRegistry.core("LEVERAGE_NFT"));
         address proxyAddress = leverageNFT.tokenIdToProxy(_tokenId);
 
-        IProxy(proxyAddress).removeFromPosition(params.marginAmount, params.flashLoanAmount, params.pathDefinition);
+        IProxy(proxyAddress).removeFromPosition(params.marginAmountOrCollateralReductionAmount, params.flashLoanAmount, params.pathDefinition);
     }
 
     /// @notice Closes an existing leveraged position

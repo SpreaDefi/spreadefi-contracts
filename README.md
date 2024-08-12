@@ -1,31 +1,32 @@
-0. run `anvil`
-im using the first provided public/private address for deployments and testing
+# Frontend Calculations
 
-## 1. deploy stakingLibrary
+This is a guide to calculate required values for the frontend.
 
-command: forge create src/LibStakingStorage.sol:LibStakingStorage --rpc-url http://127.0.0.1:8545 --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+## Long Quote
 
-Result:  0x5FbDB2315678afecb367f032d93F642f64180aa3
+Long Position is a position where you are long on the base token and short on the quote token.
 
-## 2. deploy StakingViewsFacet
+#### Add to Position
+1. `tokenId` - the tokenid of the position NFT.
+    #### Position Struct
+    2. `marginAmountOrCollateralReductionAmount` - The amount of Quote (stable asset) to provide as margin.
+    3. `flashLoanAmount` - The amount of Quote (stable asset) to borrow, this defines the amount of leverage a position has.
+        > For example: 100 USDC as margin, using 200 USDC as flash loan amount, the position is 3x leveraged.
+    4. `pathDefinition` - The params needed for the swap or raw transaction data.
 
-command: forge create src/MockStakingViewsFacet.sol:StakingViewsFacet --libraries src/LibStakingStorage.sol:LibStakingStorage:0x5FbDB2315678afecb367f032d93F642f64180aa3 --rpc-url http://127.0.0.1:8545 --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
- 
-Result: 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512
+#### Remove from Position
 
-## 3. deploy StakingBalancesFacet with StakingViewsFacet address as constructor argument
+1. `tokenId` - the tokenid of the position NFT
+    #### Position Struct
+    2. `marginAmountOrCollateralReductionAmount` - The amount of Base Token (volatile asset) to withdraw from the position as collateral.
+    3. `flashLoanAmount` - The amount of Quote (stable asset) to repay, marginAmountOrCollateralReductionAmount quote value should be greater than the flashLoanAmount plus the interest (0.05%)
+    4. `pathDefinition` - The params needed for the swap or raw transaction data.
 
- command: forge create src/MockStakingBalancesFacet.sol:StakingBalancesFacet --constructor-args 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512 --libraries src/LibStakingStorage.sol:LibStakingStorage:0x5FbDB2315678afecb367f032d93F642f64180aa3 --rpc-url http://127.0.0.1:8545 --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
- 
-result: 0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0
+#### Close Position
 
-## 4. deploy StakingBalancesViewsFacet
-
-command: forge create src/MockStakingBalancesViewsFacet.sol:StakingBalancesViewsFacet --libraries src/LibStakingStorage.sol:LibStakingStorage:0x5FbDB2315678afecb367f032d93F642f64180aa3 --rpc-url http://127.0.0.1:8545 --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
-
-result: 0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
-
-## 5. deploy StakingManager in test script with previousyl deployed addresses
-command: forge test --fork-url http://127.0.0.1:8545
+1. `tokenId` - the tokenid of the position NFT
+2. `pathDefinition` - The params needed for the swap or raw transaction data.
+    > The pathDefinition should swap all of the base token collateral to quote token to repay the flash loan+ interest and return the remaining quote token to the user.
 
 
+## Long Base

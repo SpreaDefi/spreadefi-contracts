@@ -58,25 +58,25 @@ contract Using_Proxy_Short_Quote_Odos_ZeroLend_Test is Test, IERC721Receiver {
     function testCreatePosition() public {
         deal(USDCAddress, (address(this)), 100 * 10**6, true);
 
-        IERC20(USDCAddress).approve(address(master), 100 * 10**6);
-
         IMaster.NewPositionParams memory params = IMaster.NewPositionParams({
             implementation: "SHORT_QUOTE_ODOS_ZEROLEND",
             quoteToken: USDCAddress,
             baseToken: WETHAddress
         });
 
-        IMaster(address(master)).createPosition(params);
+        (uint256 tokenId, address proxyAddress) = IMaster(address(master)).createPosition(params);
 
         uint256 nftBalance = leveragedNFT.balanceOf(address(this));
 
         assertEq(nftBalance, 1);
 
         IMaster.PositionParams memory positionParams = IMaster.PositionParams({
-            marginAmount: 100 * 10**6,
+            marginAmountOrCollateralReductionAmount: 100 * 10**6,
             flashLoanAmount: 0.061 ether,
             pathDefinition: odosAdd
         });
+
+        IERC20(USDCAddress).approve(proxyAddress, 100 * 10**6);
 
         IMaster(address(master)).addToPosition(
             0,
@@ -89,25 +89,25 @@ contract Using_Proxy_Short_Quote_Odos_ZeroLend_Test is Test, IERC721Receiver {
     function testRemovePosition() public {
         deal(USDCAddress, (address(this)), 100 * 10**6, true);
 
-        IERC20(USDCAddress).approve(address(master), 100 * 10**6);
-
         IMaster.NewPositionParams memory params = IMaster.NewPositionParams({
             implementation: "SHORT_QUOTE_ODOS_ZEROLEND",
             quoteToken: USDCAddress,
             baseToken: WETHAddress
         });
 
-        IMaster(address(master)).createPosition(params);
+        (uint256 tokenId, address proxyAddress) = IMaster(address(master)).createPosition(params);
 
         uint256 nftBalance = leveragedNFT.balanceOf(address(this));
 
         assertEq(nftBalance, 1);
 
         IMaster.PositionParams memory positionParams = IMaster.PositionParams({
-            marginAmount: 100 * 10**6,
+            marginAmountOrCollateralReductionAmount: 100 * 10**6,
             flashLoanAmount: 0.061 ether,
             pathDefinition: odosAdd
         });
+
+        IERC20(USDCAddress).approve(proxyAddress, 100 * 10**6);
 
         IMaster(address(master)).addToPosition(
             0,
@@ -116,7 +116,7 @@ contract Using_Proxy_Short_Quote_Odos_ZeroLend_Test is Test, IERC721Receiver {
 
         // reduce exposure, can unwind by inputting margin amount and flash loan amount as leveraged ratio
         IMaster.PositionParams memory removeParams = IMaster.PositionParams({
-            marginAmount: 50 * 10**6,
+            marginAmountOrCollateralReductionAmount: 50 * 10**6,
             flashLoanAmount: 0.015 ether,
             pathDefinition: odosRemove
         });
@@ -134,25 +134,25 @@ contract Using_Proxy_Short_Quote_Odos_ZeroLend_Test is Test, IERC721Receiver {
         console.log("testing close");
         deal(USDCAddress, (address(this)), 100 * 10**6, true);
 
-        IERC20(USDCAddress).approve(address(master), 100 * 10**6);
-
         IMaster.NewPositionParams memory params = IMaster.NewPositionParams({
             implementation: "SHORT_QUOTE_ODOS_ZEROLEND",
             quoteToken: USDCAddress,
             baseToken: WETHAddress
         });
 
-        IMaster(address(master)).createPosition(params);
+        (uint256 tokenId, address proxyAddress) = IMaster(address(master)).createPosition(params);
 
         uint256 nftBalance = leveragedNFT.balanceOf(address(this));
 
         assertEq(nftBalance, 1);
 
         IMaster.PositionParams memory positionParams = IMaster.PositionParams({
-            marginAmount: 100 * 10**6,
+            marginAmountOrCollateralReductionAmount: 100 * 10**6,
             flashLoanAmount: 0.061 ether,
             pathDefinition: odosAdd
         });
+
+        IERC20(USDCAddress).approve(proxyAddress, 100 * 10**6);
 
         IMaster(address(master)).addToPosition(
             0,
