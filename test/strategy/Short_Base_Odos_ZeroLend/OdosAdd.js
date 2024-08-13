@@ -14,7 +14,7 @@ async function getQuote() {
         inputTokens: [
             {
                 tokenAddress: WETHAddress,
-                amount: '91000000000000000' 
+                amount: '90000000000000000' 
             }
         ],
         outputTokens: [
