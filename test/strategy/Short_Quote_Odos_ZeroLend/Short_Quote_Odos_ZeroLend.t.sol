@@ -34,7 +34,7 @@ contract Using_Proxy_Short_Quote_Odos_ZeroLend_Test is Test, IERC721Receiver {
 
     /* %%%%%%%%%%%%%%%% ODOS API VARIABLES %%%%%%%%%%%%%%%% */
 
-    bytes odosAdd = hex"83bd37f90001e5d7c2a44ffddf6b295a15c148167daaaf5cf34f0001176211869ca2b568f2a7d4ee941e073a821ee1ff078e1bc9bf0400000406758a9b028f5c00017D2b63A9ab475397d9c247468803F25Cf6523B76000000014f81992FCe2E1846dD528eC0102e6eE1f61ed3e20000000003010204017b02559f030101010102001900030101010302001eff0000000000006fb44889a9aa69f7290258d3716bffcb33cde184e5d7c2a44ffddf6b295a15c148167daaaf5cf34f51a056cc4eb7d1feb896554f97aa01805d41f19000000000";
+    bytes odosAdd = hex"83bd37f90001e5d7c2a44ffddf6b295a15c148167daaaf5cf34f0001176211869ca2b568f2a7d4ee941e073a821ee1ff078e1bc9bf0400000406761418028f5c00017D2b63A9ab475397d9c247468803F25Cf6523B7600000001CB6f5076b5bbae81D7643BfBf57897E8E3FB1db90000000004010205000a0100010200020a0001030400ff00000000000000000000000000001947b87d35e9f1cd53cede1ad6f7be44c12212b8e5d7c2a44ffddf6b295a15c148167daaaf5cf34f6e9ad0b8a41e2c148e7b0385d3ecbfdb8a216a9ba219439258ca9da29e9cc4ce5596924745e12b9300000000000000000000000000000000";
 
     bytes odosRemove = hex'83bd37f90001176211869ca2b568f2a7d4ee941e073a821ee1ff0001e5d7c2a44ffddf6b295a15c148167daaaf5cf34f040175fe30072006b932ff127c028f5c00017D2b63A9ab475397d9c247468803F25Cf6523B76000000014f81992FCe2E1846dD528eC0102e6eE1f61ed3e20000000003010203000a0101010201ff000000000000000000000000000000000000000000586733678b9ac9da43dd7cb83bbb41d23677dfc3176211869ca2b568f2a7d4ee941e073a821ee1ff000000000000000000000000000000000000000000000000';
 
@@ -57,36 +57,36 @@ contract Using_Proxy_Short_Quote_Odos_ZeroLend_Test is Test, IERC721Receiver {
         centralRegistry.addProtocol("ZEROLEND_POOL", zeroLendAddress);
     }
 
-    function testCreatePosition() public {
-        deal(USDCAddress, (address(this)), 100 * 10**6, true);
+    // function testCreatePosition() public {
+    //     deal(USDCAddress, (address(this)), 100 * 10**6, true);
 
-        IMaster.NewPositionParams memory params = IMaster.NewPositionParams({
-            implementation: "SHORT_QUOTE_ODOS_ZEROLEND",
-            quoteToken: USDCAddress,
-            baseToken: WETHAddress
-        });
+    //     IMaster.NewPositionParams memory params = IMaster.NewPositionParams({
+    //         implementation: "SHORT_QUOTE_ODOS_ZEROLEND",
+    //         quoteToken: USDCAddress,
+    //         baseToken: WETHAddress
+    //     });
 
-        (uint256 tokenId, address proxyAddress) = IMaster(address(master)).createPosition(params);
+    //     (uint256 tokenId, address proxyAddress) = IMaster(address(master)).createPosition(params);
 
-        uint256 nftBalance = leveragedNFT.balanceOf(address(this));
+    //     uint256 nftBalance = leveragedNFT.balanceOf(address(this));
 
-        assertEq(nftBalance, 1);
+    //     assertEq(nftBalance, 1);
 
-        IMaster.PositionParams memory positionParams = IMaster.PositionParams({
-            marginAmountOrCollateralReductionAmount: 100 * 10**6,
-            flashLoanAmount: 40000000000000000,
-            pathDefinition: odosAdd
-        });
+    //     IMaster.PositionParams memory positionParams = IMaster.PositionParams({
+    //         marginAmountOrCollateralReductionAmount: 100 * 10**6,
+    //         flashLoanAmount: 40000000000000000,
+    //         pathDefinition: odosAdd
+    //     });
 
-        IERC20(USDCAddress).approve(proxyAddress, 100 * 10**6);
+    //     IERC20(USDCAddress).approve(proxyAddress, 100 * 10**6);
 
-        IMaster(address(master)).addToPosition(
-            0,
-            positionParams
-        );
+    //     IMaster(address(master)).addToPosition(
+    //         0,
+    //         positionParams
+    //     );
 
 
-    }
+    // }
 
     // function testRemovePosition() public {
     //     deal(USDCAddress, (address(this)), 100 * 10**6, true);
@@ -167,35 +167,35 @@ contract Using_Proxy_Short_Quote_Odos_ZeroLend_Test is Test, IERC721Receiver {
 
     // }
 
-    // function testCreateAndAdd() public {
-    //     deal(USDCAddress, (address(this)), 100 * 10**6, true);
+    function testCreateAndAdd() public {
+        deal(USDCAddress, (address(this)), 100 * 10**6, true);
 
-    //     IMaster.NewPositionParams memory params = IMaster.NewPositionParams({
-    //         implementation: "SHORT_QUOTE_ODOS_ZEROLEND",
-    //         quoteToken: USDCAddress,
-    //         baseToken: WETHAddress
-    //     });
+        IMaster.NewPositionParams memory params = IMaster.NewPositionParams({
+            implementation: "SHORT_QUOTE_ODOS_ZEROLEND",
+            quoteToken: USDCAddress,
+            baseToken: WETHAddress
+        });
 
-    //     (uint256 tokenId, address proxyAddress) = IMaster(address(master)).createPosition(params);
+        (uint256 tokenId, address proxyAddress) = IMaster(address(master)).createPosition(params);
 
-    //     emit debugAddress("proxyAddress", proxyAddress);
-    //     uint256 nftBalance = leveragedNFT.balanceOf(address(this));
+        emit debugAddress("proxyAddress", proxyAddress);
+        uint256 nftBalance = leveragedNFT.balanceOf(address(this));
 
-    //     assertEq(nftBalance, 1);
+        assertEq(nftBalance, 1);
 
-    //     IMaster.PositionParams memory positionParams = IMaster.PositionParams({
-    //         marginAmountOrCollateralReductionAmount: 100 * 10**6,
-    //         flashLoanAmount: 40000000000000000,
-    //         pathDefinition: odosAdd
-    //     });
+        IMaster.PositionParams memory positionParams = IMaster.PositionParams({
+            marginAmountOrCollateralReductionAmount: 100 * 10**6,
+            flashLoanAmount: 40000000000000000,
+            pathDefinition: odosAdd
+        });
 
-    //     IERC20(USDCAddress).approve(address(master), 100 * 10**6);
+        IERC20(USDCAddress).approve(address(master), 100 * 10**6);
 
-    //     IMaster(address(master)).createAndAddToPosition(
-    //         params,
-    //         positionParams
-    //     );
-    // }
+        IMaster(address(master)).createAndAddToPosition(
+            params,
+            positionParams
+        );
+    }
 
 
     function onERC721Received(
