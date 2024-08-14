@@ -97,7 +97,7 @@ contract Master {
 
         marginToken.safeIncreaseAllowance(proxyAddress, marginAmount);
 
-        proxy.createAndAddToPosition(marginAmount, _positionParams.flashLoanAmount, _positionParams.pathDefinition);
+       IProxy(proxyAddress).createAndAddToPosition(_positionParams.marginAmountOrCollateralReductionAmount, _positionParams.flashLoanAmount,_positionParams.pathDefinition);
 
     }
 

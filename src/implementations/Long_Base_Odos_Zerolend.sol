@@ -33,6 +33,17 @@ contract Long_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver {
         _;
     }
 
+    function initialize(address _centralRegistry, uint256 _tokenId, address _quoteToken, address _baseToken) override onlyFactory external {
+        centralRegistryAddress = _centralRegistry;
+        tokenId = _tokenId;
+        QUOTE_TOKEN = _quoteToken;
+        BASE_TOKEN = _baseToken;
+
+        MARGIN_TYPE = 1;
+
+    }
+
+
     function _swapQuoteForBase(
         bytes memory _transactionData
     ) internal returns (uint256 quoteIn, uint256 baseOut) {

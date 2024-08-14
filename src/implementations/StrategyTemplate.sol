@@ -53,7 +53,7 @@ abstract contract StrategyTemplate {
     /// @param _tokenId The ID of the NFT token representing the position
     /// @param _quoteToken The address of the quote token
     /// @param _baseToken The address of the base tokens
-    function initialize(address _centralRegistry, uint256 _tokenId, address _quoteToken, address _baseToken) onlyFactory external {
+    function initialize(address _centralRegistry, uint256 _tokenId, address _quoteToken, address _baseToken) virtual onlyFactory external {
         centralRegistryAddress = _centralRegistry;
         tokenId = _tokenId;
         QUOTE_TOKEN = _quoteToken;

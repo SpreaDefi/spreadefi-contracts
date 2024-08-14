@@ -38,13 +38,23 @@ contract Short_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate
         _;
     }
 
+    function initialize(address _centralRegistry, uint256 _tokenId, address _quoteToken, address _baseToken) override onlyFactory external {
+        centralRegistryAddress = _centralRegistry;
+        tokenId = _tokenId;
+        QUOTE_TOKEN = _quoteToken;
+        BASE_TOKEN = _baseToken;
+
+        MARGIN_TYPE = 0;
+
+    }
+
     function addToPosition(
         uint256 _marginAmount,
         uint256 _flashLoanAmount,
         bytes memory _odosTransactionData
         ) override onlyMaster external {
 
-        IERC20(QUOTE_TOKEN).safeTransferFrom(msg.sender, address(this), _marginAmount);
+        IERC20(QUOTE_TOKEN).safeTransferFrom(_getNFTOwner(), address(this), _marginAmount);
 
         Action action = Action.ADD;
 
@@ -92,6 +102,10 @@ contract Short_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate
         // Approve the Zerolend pool to spend the quote token
         quoteToken.safeIncreaseAllowance(poolAddress, quoteTotal);
 
+        // balance of quote token
+        emit debugUint("balanceOf quote token", quoteToken.balanceOf(address(this)));
+        emit debugUint("balanceOf base token", baseToken.balanceOf(address(this)));
+
         // deposit the quote token to the Zerolend pool
         pool.deposit(QUOTE_TOKEN, quoteTotal, address(this), 0);
 
@@ -109,7 +123,7 @@ contract Short_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate
         bytes memory _odosTransactionData
     ) override onlyMaster external {
 
-        IERC20(BASE_TOKEN).safeTransferFrom(msg.sender, address(this), _marginAmount);
+        IERC20(QUOTE_TOKEN).safeTransferFrom(msg.sender, address(this), _marginAmount);
 
         Action action = Action.ADD;
 
@@ -119,7 +133,7 @@ contract Short_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate
 
         address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
 
-        IPool(poolAddress).flashLoanSimple(address(this), QUOTE_TOKEN, _flashLoanAmount, data, 0);
+        IPool(poolAddress).flashLoanSimple(address(this), BASE_TOKEN, _flashLoanAmount, data, 0);
 
     }
 
@@ -279,8 +293,14 @@ contract Short_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate
     ) internal returns (uint256 baseIn, uint256 quoteOut) {
         // Base balance before swap
         uint256 baseBalanceBefore = IERC20(BASE_TOKEN).balanceOf(address(this));
+
+        emit debugUint("quote balance before swap:", IERC20(QUOTE_TOKEN).balanceOf(address(this)));
+        emit debugUint("base balance before swap:", baseBalanceBefore);
         
         bytes memory returnData = _executeOdosTransaction(_transactionData);
+
+        emit debugUint("Quote balance after swap", IERC20(QUOTE_TOKEN).balanceOf(address(this)));
+        emit debugUint("Base balance after swap", IERC20(BASE_TOKEN).balanceOf(address(this)));
 
         quoteOut = abi.decode(returnData, (uint256));
 

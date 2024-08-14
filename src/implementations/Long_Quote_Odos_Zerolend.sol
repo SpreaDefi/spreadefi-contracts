@@ -40,13 +40,24 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate 
         _;
     }
 
+    function initialize(address _centralRegistry, uint256 _tokenId, address _quoteToken, address _baseToken) override onlyFactory external {
+        centralRegistryAddress = _centralRegistry;
+        tokenId = _tokenId;
+        QUOTE_TOKEN = _quoteToken;
+        BASE_TOKEN = _baseToken;
+
+        MARGIN_TYPE = 0;
+
+    }
+
+
     function createAndAddToPosition(
         uint256 _marginAmount,
         uint256 _flashLoanAmount,
         bytes memory _odosTransactionData
     ) override onlyMaster external {
 
-        IERC20(BASE_TOKEN).safeTransferFrom(msg.sender, address(this), _marginAmount);
+        IERC20(QUOTE_TOKEN).safeTransferFrom(msg.sender, address(this), _marginAmount);
 
         Action action = Action.ADD;
 
@@ -73,7 +84,7 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate 
 
         emit debugBytes("Input Transaction Data", _odosTransactionData);
 
-        IERC20(QUOTE_TOKEN).safeTransferFrom(_getNFTOwner(), address(this), _marginAmount); // rmemove later after testing maybe
+        IERC20(QUOTE_TOKEN).safeTransferFrom(_getNFTOwner(), address(this), _marginAmount); 
 
         emit debugUint("Margin Amount", _marginAmount);
 

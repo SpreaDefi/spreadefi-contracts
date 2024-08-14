@@ -65,114 +65,114 @@ contract Using_Proxy_Long_Base_Odos_ZeroLend_Test_WBTC is Test, IERC721Receiver 
 
     }
 
-    // function testCreatePosition() public {
+    function testCreatePosition() public {
 
-    //     deal(WBTCAddress, (address(this)), TEN_MILLION_SATS, true);
+        deal(WBTCAddress, (address(this)), TEN_MILLION_SATS, true);
 
-    //     IERC20(WBTCAddress).approve(address(master), TEN_MILLION_SATS);
+        IERC20(WBTCAddress).approve(address(master), TEN_MILLION_SATS);
 
-    //     IMaster.NewPositionParams memory params = IMaster.NewPositionParams({
-    //         implementation: "LONG_BASE_ODOS_ZEROLEND",
-    //         quoteToken: USDCAddress,
-    //         baseToken: WBTCAddress
-    //     });
+        IMaster.NewPositionParams memory params = IMaster.NewPositionParams({
+            implementation: "LONG_BASE_ODOS_ZEROLEND",
+            quoteToken: USDCAddress,
+            baseToken: WBTCAddress
+        });
 
-    //     (uint256 tokenId, address proxyAddress) = IMaster(address(master)).createPosition(params);
+        (uint256 tokenId, address proxyAddress) = IMaster(address(master)).createPosition(params);
 
-    //     uint256 nftBalance = leveragedNFT.balanceOf(address(this));
+        uint256 nftBalance = leveragedNFT.balanceOf(address(this));
 
-    //     assertEq(nftBalance, 1);
+        assertEq(nftBalance, 1);
 
-    //     IMaster.PositionParams memory position = IMaster.PositionParams({
-    //         marginAmountOrCollateralReductionAmount: ONE_MILLION_SATS,
-    //         flashLoanAmount: 590_110000,
-    //         pathDefinition: odosAdd
-    //     });
+        IMaster.PositionParams memory position = IMaster.PositionParams({
+            marginAmountOrCollateralReductionAmount: ONE_MILLION_SATS,
+            flashLoanAmount: 590_110000,
+            pathDefinition: odosAdd
+        });
 
-    //     IERC20(WBTCAddress).approve(proxyAddress, TEN_MILLION_SATS);
+        IERC20(WBTCAddress).approve(proxyAddress, TEN_MILLION_SATS);
 
-    //     IMaster(address(master)).addToPosition(0, position);
-    // }
+        IMaster(address(master)).addToPosition(0, position);
+    }
 
-    // function testRemovePosition() public {
-    //     deal(WBTCAddress, (address(this)), TEN_MILLION_SATS, true);
+    function testRemovePosition() public {
+        deal(WBTCAddress, (address(this)), TEN_MILLION_SATS, true);
 
-    //     IERC20(WBTCAddress).approve(address(master), TEN_MILLION_SATS);
+        IERC20(WBTCAddress).approve(address(master), TEN_MILLION_SATS);
 
-    //     IMaster.NewPositionParams memory params = IMaster.NewPositionParams({
-    //         implementation: "LONG_BASE_ODOS_ZEROLEND",
-    //         quoteToken: USDCAddress,
-    //         baseToken: WBTCAddress
-    //     });
+        IMaster.NewPositionParams memory params = IMaster.NewPositionParams({
+            implementation: "LONG_BASE_ODOS_ZEROLEND",
+            quoteToken: USDCAddress,
+            baseToken: WBTCAddress
+        });
 
-    //     (uint256 tokenId, address proxyAddress) = IMaster(address(master)).createPosition(params);
+        (uint256 tokenId, address proxyAddress) = IMaster(address(master)).createPosition(params);
 
-    //     uint256 nftBalance = leveragedNFT.balanceOf(address(this));
+        uint256 nftBalance = leveragedNFT.balanceOf(address(this));
 
-    //     assertEq(nftBalance, 1);
+        assertEq(nftBalance, 1);
 
-    //     IMaster.PositionParams memory position = IMaster.PositionParams({
-    //         marginAmountOrCollateralReductionAmount: ONE_MILLION_SATS,
-    //         flashLoanAmount: 596_860000,
-    //         pathDefinition: odosAdd
-    //     });
+        IMaster.PositionParams memory position = IMaster.PositionParams({
+            marginAmountOrCollateralReductionAmount: ONE_MILLION_SATS,
+            flashLoanAmount: 596_860000,
+            pathDefinition: odosAdd
+        });
 
-    //     IERC20(WBTCAddress).approve(proxyAddress, TEN_MILLION_SATS);
+        IERC20(WBTCAddress).approve(proxyAddress, TEN_MILLION_SATS);
 
-    //     IMaster(address(master)).addToPosition(0, position);
+        IMaster(address(master)).addToPosition(0, position);
 
-    //     // unwind position by paying loan and removing base from collateral
-    //     // 1. determine how much of the loan to repay
-    //     // 2. get a flashloan of at least the flash loan amount + premium, if more it increases exposure.
-    //     // 3. withdraw base from collateral to repay loan + premium in USDC
-    //     // 4. swap base to USDC
-    //     // 5. repay flashloan
+        // unwind position by paying loan and removing base from collateral
+        // 1. determine how much of the loan to repay
+        // 2. get a flashloan of at least the flash loan amount + premium, if more it increases exposure.
+        // 3. withdraw base from collateral to repay loan + premium in USDC
+        // 4. swap base to USDC
+        // 5. repay flashloan
 
-    //     // 678.36 USDC flash loan amount
-    //     // 678.36 * 100.05% [premium] = 679.05 USDC
-    //     // 100.05% of 1 million satoshi = 1000500
+        // 678.36 USDC flash loan amount
+        // 678.36 * 100.05% [premium] = 679.05 USDC
+        // 100.05% of 1 million satoshi = 1000500
 
-    //     IMaster.PositionParams memory removeParams = IMaster.PositionParams({
-    //         marginAmountOrCollateralReductionAmount: 100500,
-    //         flashLoanAmount: 59_670000,
-    //         pathDefinition: odosRemove
-    //     });
+        IMaster.PositionParams memory removeParams = IMaster.PositionParams({
+            marginAmountOrCollateralReductionAmount: 100500,
+            flashLoanAmount: 59_670000,
+            pathDefinition: odosRemove
+        });
 
-    //     // params: _tokenId, _baseReductionAmount, _flashLoanAmount, _pathDefinition
-    //     IMaster(address(master)).removeFromPosition(0, removeParams);
+        // params: _tokenId, _baseReductionAmount, _flashLoanAmount, _pathDefinition
+        IMaster(address(master)).removeFromPosition(0, removeParams);
 
 
-    // }
+    }
     
-    // function testClosePosition() public {
-    //     deal(WBTCAddress, (address(this)), TEN_MILLION_SATS, true);
+    function testClosePosition() public {
+        deal(WBTCAddress, (address(this)), TEN_MILLION_SATS, true);
 
-    //     IERC20(WBTCAddress).approve(address(master), TEN_MILLION_SATS);
+        IERC20(WBTCAddress).approve(address(master), TEN_MILLION_SATS);
 
-    //     IMaster.NewPositionParams memory params = IMaster.NewPositionParams({
-    //         implementation: "LONG_BASE_ODOS_ZEROLEND",
-    //         quoteToken: USDCAddress,
-    //         baseToken: WBTCAddress
-    //     });
+        IMaster.NewPositionParams memory params = IMaster.NewPositionParams({
+            implementation: "LONG_BASE_ODOS_ZEROLEND",
+            quoteToken: USDCAddress,
+            baseToken: WBTCAddress
+        });
 
-    //     (uint256 tokenId, address proxyAddress) = IMaster(address(master)).createPosition(params);
+        (uint256 tokenId, address proxyAddress) = IMaster(address(master)).createPosition(params);
 
-    //     uint256 nftBalance = leveragedNFT.balanceOf(address(this));
+        uint256 nftBalance = leveragedNFT.balanceOf(address(this));
 
-    //     assertEq(nftBalance, 1);
+        assertEq(nftBalance, 1);
 
-    //     IMaster.PositionParams memory position = IMaster.PositionParams({
-    //         marginAmountOrCollateralReductionAmount: ONE_MILLION_SATS,
-    //         flashLoanAmount: 590_110000,
-    //         pathDefinition: odosAdd
-    //     });
+        IMaster.PositionParams memory position = IMaster.PositionParams({
+            marginAmountOrCollateralReductionAmount: ONE_MILLION_SATS,
+            flashLoanAmount: 590_110000,
+            pathDefinition: odosAdd
+        });
 
-    //     IERC20(WBTCAddress).approve(proxyAddress, TEN_MILLION_SATS);
+        IERC20(WBTCAddress).approve(proxyAddress, TEN_MILLION_SATS);
 
-    //     IMaster(address(master)).addToPosition(0, position);
+        IMaster(address(master)).addToPosition(0, position);
 
-    //     IMaster(address(master)).closePosition(0, odosClose);
-    // }
+        IMaster(address(master)).closePosition(0, odosClose);
+    }
 
     function testAndAddPosition() public {
         deal(WBTCAddress, (address(this)), TEN_MILLION_SATS, true);
