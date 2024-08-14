@@ -106,6 +106,8 @@ contract Short_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate
         emit debugUint("balanceOf quote token", quoteToken.balanceOf(address(this)));
         emit debugUint("balanceOf base token", baseToken.balanceOf(address(this)));
 
+        emit debugAddress("address of this contract", address(this));
+
         // deposit the quote token to the Zerolend pool
         pool.deposit(QUOTE_TOKEN, quoteTotal, address(this), 0);
 

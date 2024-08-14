@@ -125,7 +125,7 @@ contract Short_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver 
 
         address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
 
-        IPool(poolAddress).flashLoanSimple(address(this), QUOTE_TOKEN, _flashLoanAmount, data, 0);
+        IPool(poolAddress).flashLoanSimple(address(this), BASE_TOKEN, _flashLoanAmount, data, 0);
 
     }
 
