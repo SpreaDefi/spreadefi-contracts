@@ -23,12 +23,6 @@ contract Short_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver 
         CLOSE
     }
 
-    /// @notice Events for debugging purposes
-    event debugUint(string, uint256);
-    event debugAddress(string, address);
-    event debugString(string);
-    event debugBytes(string, bytes);
-
     /// @dev Modifier to restrict access to the Zerolend pool
     modifier onlyZerolendPool() {
         address poolAddress = ICentralRegistry(centralRegistryAddress).protocols("ZEROLEND_POOL");
@@ -92,7 +86,6 @@ contract Short_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver 
         // lend quote token to the pool
         pool.deposit(QUOTE_TOKEN, quoteOut, address(this), 0);
 
-        emit debugUint("trying to borrow...", _totalDebt);
         pool.borrow(BASE_TOKEN, _totalDebt, 2, 0, address(this));
         
         // get leftover base amount
@@ -272,8 +265,6 @@ contract Short_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver 
         
         bytes memory returnData = _executeOdosTransaction(_transactionData);
 
-        emit debugUint("odos transaction executed", 0);
-
         baseOut = abi.decode(returnData, (uint256));
 
         // Quote balance after swap
@@ -294,23 +285,19 @@ contract Short_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver 
     ) onlyZerolendPool onlySelf(initiator) external override returns (bool) {
 
         uint256 totalDebt = flashLoanAmount + premium;
-        emit debugUint("totalDebt", totalDebt);
        
         (Action action, uint256 marginAddedOrBaseReductionAmount_, bytes memory odosTransactionData_) = abi.decode(params, (Action, uint256, bytes));
 
         if (action == Action.ADD) {
 
-        emit debugUint("is add", 0);
-
             _addPosition(flashLoanAmount, marginAddedOrBaseReductionAmount_,odosTransactionData_, totalDebt);
 
         } else if (action == Action.REMOVE) {
-            emit debugUint ("is remove", 0);
-            
+
             _removePosition(flashLoanAmount, marginAddedOrBaseReductionAmount_, odosTransactionData_, totalDebt);
         }
             else if (action == Action.CLOSE) {
-            emit debugUint ("is close", 2);
+     
             _closePosition(flashLoanAmount, odosTransactionData_, totalDebt);
         }
 
@@ -321,14 +308,13 @@ contract Short_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver 
 
     function _executeOdosTransaction(bytes memory transactionData) internal returns (bytes memory) {
         // Use a low-level call to execute the transaction
-        emit debugString("Executing Odos transaction");
-        emit debugBytes("Transaction data", transactionData);
+
         ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
 
         address odosRouterAddress = centralRegistry.protocols("ODOS_ROUTER");
         (bool success, bytes memory returnData) = odosRouterAddress.call(transactionData);
         if (!success) revert SwapFailed();
-        emit debugString("Odos transaction executed successfully");
+ 
         return returnData;
 
     }
