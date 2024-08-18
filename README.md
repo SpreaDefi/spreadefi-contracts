@@ -40,7 +40,7 @@ You use the base token as margin and borrow more base token. The quote token is 
     #### Position Struct
     2. `marginAmountOrCollateralReductionAmount` - The amount of Base Token (volatile asset) to provide as margin.
     3. `flashLoanAmount` - The amount of quote token (stable asset) to borrow, this defines the amount of leverage a position has.
-        > For example: 0.01 BTC is worth 100 USDC, using 200 USDC as flash loan amount, the position is 3x leveraged. The 0.02 BTC is swapped for 200 USDC.
+        > For example: 0.01 BTC is worth 100 USDC, using 200 USDC as flash loan amount, the position is 3x leveraged. 200 USDC is swapped for 0.02 BTC
     4. `pathDefinition` - the params needed to swap the flash loan amount for base token.
 
 #### Remove from Position
