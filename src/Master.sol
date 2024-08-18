@@ -28,9 +28,6 @@ contract Master {
     error ZeroAddress();
     error ZeroAmount();
 
-    /// @notice Event for debugging purposes
-    event debugString(string message);
-
     /// @notice Constructor to set the central registry address
     /// @param _centralRegistry The address of the central registry contract
     constructor(address _centralRegistry) {
@@ -130,7 +127,7 @@ contract Master {
     /// @param _tokenId The ID of the leverage NFT
     /// @param _positionParams The parameters for adding to the position
     function addToPosition(uint256 _tokenId, PositionParams memory _positionParams) onlyNFTOwner(_tokenId) public {
-        emit debugString("Adding to position");
+        
         ILeverageNFT leverageNFT = ILeverageNFT(centralRegistry.core("LEVERAGE_NFT"));
         address proxyAddress = leverageNFT.tokenIdToProxy(_tokenId);
 

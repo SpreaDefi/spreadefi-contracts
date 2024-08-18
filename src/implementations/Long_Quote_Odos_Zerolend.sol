@@ -27,12 +27,6 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate 
         CLOSE
     }
 
-    /// @notice Events for debugging purposes
-    event debugUint(string, uint256);
-    event debugAddress(string, address);
-    event debugString(string);
-    event debugBytes(string, bytes);
-
     /// @dev Modifier to restrict access to the Zerolend pool
     modifier onlyZerolendPool() {
         address poolAddress = ICentralRegistry(centralRegistryAddress).protocols("ZEROLEND_POOL");
@@ -82,29 +76,15 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate 
         bytes memory _odosTransactionData
         ) override onlyMaster external {
 
-        emit debugBytes("Input Transaction Data", _odosTransactionData);
-
         IERC20(QUOTE_TOKEN).safeTransferFrom(_getNFTOwner(), address(this), _marginAmount); 
-
-        emit debugUint("Margin Amount", _marginAmount);
 
         Action action = Action.ADD;
 
-        emit debugUint("Action Add", 0);
-
         bytes memory data = abi.encode(action, _marginAmount, _odosTransactionData);
 
-        emit debugUint("Encoded data", 0);
-
         ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
-
-        emit debugAddress("centralRegistry Address", address(centralRegistry));
         
         address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
-
-        emit debugUint("got pool address",0);
-
-        emit debugAddress("Pool Address", poolAddress);
 
         IPool(poolAddress).flashLoanSimple(address(this), QUOTE_TOKEN, _flashLoanAmount, data, 0);
         
@@ -167,23 +147,19 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate 
     ) onlyZerolendPool onlySelf(initiator) external override returns (bool) {
 
         uint256 totalDebt = flashLoanAmount + premium;
-        emit debugUint("totalDebt", totalDebt);
         
         (Action action, uint256 marginAddedOrBaseReductionAmount_, bytes memory odosTransactionData_) = abi.decode(params, (Action, uint256, bytes));
 
         if (action == Action.ADD) {
 
-        emit debugUint("is add", 0);
-
             _addPosition(flashLoanAmount, marginAddedOrBaseReductionAmount_,odosTransactionData_, totalDebt);
 
         } else if (action == Action.REMOVE) {
-            emit debugUint ("is remove", 0);
             
             _removePosition(flashLoanAmount, marginAddedOrBaseReductionAmount_, odosTransactionData_, totalDebt);
         }
             else if (action == Action.CLOSE) {
-            emit debugUint ("is close", 2);
+
             _closePosition(flashLoanAmount, odosTransactionData_, totalDebt);
         }
 
@@ -199,14 +175,12 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate 
     /// @return bytes The return data from the Odos transaction
     function _executeOdosTransaction(bytes memory transactionData) internal returns (bytes memory) {
         // Use a low-level call to execute the transaction
-        emit debugString("Executing Odos transaction");
-        emit debugBytes("Transaction data", transactionData);
         ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
 
         address odosRouterAddress = centralRegistry.protocols("ODOS_ROUTER");
         (bool success, bytes memory returnData) = odosRouterAddress.call(transactionData);
         if (!success) revert SwapFailed();
-        emit debugString("Odos transaction executed successfully");
+
         return returnData;
 
     }
@@ -286,6 +260,7 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate 
         IPool pool = IPool(poolAddress);
 
         baseToken.safeIncreaseAllowance(poolAddress, baseAmountOut);
+
         pool.supply(BASE_TOKEN, baseAmountOut, address(this), 0);
 
         // 3. Borrow the money market borrow amount
@@ -294,7 +269,7 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate 
         // transfer leftover quote token to the owner
         uint256 remainingQuoteBalance = quoteToken.balanceOf(address(this)) - _totalDebt;
         if (remainingQuoteBalance > 0) {
-            emit debugUint("REMAINING QUOTE BALANCE", remainingQuoteBalance);
+
             quoteToken.safeTransfer(_getNFTOwner(), remainingQuoteBalance);
         }
 
@@ -321,15 +296,10 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate 
         IERC20 baseToken = IERC20(BASE_TOKEN);
         
         // 1. Repay part of the (QUOTE) borrowed amount to unlock collateral (BASE)
-        emit debugUint("quote token balance", quoteToken.balanceOf(address(this)));
-        emit debugUint("flash loan amount", _flashLoanAmount);
-        emit debugUint("trying to increase allowance of debt token...",0);
         ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
         address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
         IPool pool = IPool(poolAddress);
         quoteToken.safeIncreaseAllowance(poolAddress, _flashLoanAmount);
-        // IERC20(quoteVariableDebtTokenAddress).safeIncreaseAllowance(address(pool), flashLoanAmount);
-        emit debugUint("Trying to repay...", 0);
 
         pool.repay(QUOTE_TOKEN, _flashLoanAmount, 2, address(this));
 
@@ -337,26 +307,21 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate 
         (address baseAtokenAddress,) = _getReserveData(BASE_TOKEN);
 
         IERC20(baseAtokenAddress).safeIncreaseAllowance(poolAddress, _baseReductionAmount);
-        emit debugUint("Trying to withdraw...", 0);
-        uint256 baseAmountUnlocked = pool.withdraw(BASE_TOKEN, _baseReductionAmount, address(this));
 
-        emit debugUint("Base amount unlocked", baseAmountUnlocked);
+        uint256 baseAmountUnlocked = pool.withdraw(BASE_TOKEN, _baseReductionAmount, address(this));
 
         // 3. Swap the unlocked base token for quote token
         address odosRouterAddress = centralRegistry.protocols("ODOS_ROUTER");
+
         baseToken.safeIncreaseAllowance(odosRouterAddress, baseAmountUnlocked);
+
         (uint256 baseIn, uint256 quoteOut) = _swapBaseForQuote( _transactionData);
 
+        // 4. Refund the remaining quote token
 
-        // 4. Approve the pool to transfer the necessary amount for the flash loan repayment
         if (quoteOut > _totalDebt) {
-            quoteToken.safeIncreaseAllowance(poolAddress, quoteOut);
-            emit debugUint("Amount out", quoteOut);
+
             uint256 remainingBalance = quoteOut - _totalDebt;
-            emit debugUint("Remaining balance", remainingBalance);
-            emit debugUint("Total debt", _totalDebt);
-            emit debugUint("quote balance", IERC20(QUOTE_TOKEN).balanceOf(address(this)));
-            emit debugAddress("this address", address(this));
      
             quoteToken.safeTransfer(_getNFTOwner(), remainingBalance);
         }
@@ -376,8 +341,6 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate 
         uint256 totalDebt
     ) internal {
 
-        emit debugUint("_closePosition", 0);
-
         IERC20 quoteToken = IERC20(QUOTE_TOKEN);
         IERC20 baseToken = IERC20(BASE_TOKEN);
 
@@ -387,7 +350,7 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate 
 
         // 1. Repay the (QUOTE) borrowed amount to unlock collateral (BASE)
         quoteToken.safeIncreaseAllowance(poolAddress, _flashLoanAmount);
-        emit debugUint("Trying to repay...", 0);
+
         pool.repay(QUOTE_TOKEN, _flashLoanAmount, 2, address(this));
 
         // 2. Withdraw the base token that was unlocked
@@ -396,24 +359,18 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate 
 
         uint256 baseATokenBalance = IERC20(baseAtokenAddress).balanceOf(address(this));
 
-        emit debugUint("Trying to withdraw...", 0);
         uint256 baseAmountUnlocked = pool.withdraw(BASE_TOKEN, baseATokenBalance, address(this));
-
-        emit debugUint("Base amount unlocked", baseAmountUnlocked);
 
         // 3. Swap the unlocked base token for quote token
         address odosRouterAddress = centralRegistry.protocols("ODOS_ROUTER");
         baseToken.safeIncreaseAllowance(odosRouterAddress, baseAmountUnlocked);
         (uint256 amountIn, uint256 amountOut) = _swapBaseForQuote( _transactionData);
 
-        emit debugUint("AMOUNT OUT AFTER SWAP", amountOut);
-        emit debugUint("TOTAL DEBT", totalDebt);
-
         // 4. Approve the pool to transfer the necessary amount for the flash loan repayment
         if (amountOut > totalDebt) {
             quoteToken.safeIncreaseAllowance(poolAddress, amountOut);
             uint256 remainingBalance = amountOut - totalDebt;
-            emit debugUint("Remaining balance", remainingBalance);
+            
             quoteToken.safeTransfer(_getNFTOwner(), remainingBalance);
         }
 
