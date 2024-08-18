@@ -260,6 +260,7 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate 
         IPool pool = IPool(poolAddress);
 
         baseToken.safeIncreaseAllowance(poolAddress, baseAmountOut);
+
         pool.supply(BASE_TOKEN, baseAmountOut, address(this), 0);
 
         // 3. Borrow the money market borrow amount
@@ -311,13 +312,14 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate 
 
         // 3. Swap the unlocked base token for quote token
         address odosRouterAddress = centralRegistry.protocols("ODOS_ROUTER");
+
         baseToken.safeIncreaseAllowance(odosRouterAddress, baseAmountUnlocked);
+
         (uint256 baseIn, uint256 quoteOut) = _swapBaseForQuote( _transactionData);
 
+        // 4. Refund the remaining quote token
 
-        // 4. Approve the pool to transfer the necessary amount for the flash loan repayment
         if (quoteOut > _totalDebt) {
-            quoteToken.safeIncreaseAllowance(poolAddress, quoteOut);
 
             uint256 remainingBalance = quoteOut - _totalDebt;
      
