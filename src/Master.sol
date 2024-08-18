@@ -83,18 +83,16 @@ contract Master {
         if (marginType == 0) {
             address quoteToken = proxy.QUOTE_TOKEN();
             marginToken = IERC20(quoteToken);
-            marginToken.safeTransferFrom(msg.sender, address(this), marginAmount);
+            marginToken.safeTransferFrom(msg.sender, proxyAddress, marginAmount);
         } else if (marginType == 1) {
             address baseToken = proxy.BASE_TOKEN();
             marginToken = IERC20(baseToken);
-            marginToken.safeTransferFrom(msg.sender, address(this), marginAmount);
+            marginToken.safeTransferFrom(msg.sender, proxyAddress, marginAmount);
         } else {
             revert InvalidMarginType();
         }
 
-        marginToken.safeIncreaseAllowance(proxyAddress, marginAmount);
-
-       IProxy(proxyAddress).createAndAddToPosition(_positionParams.marginAmountOrCollateralReductionAmount, _positionParams.flashLoanAmount,_positionParams.pathDefinition);
+       IProxy(proxyAddress).addToPosition(_positionParams.marginAmountOrCollateralReductionAmount, _positionParams.flashLoanAmount,_positionParams.pathDefinition);
 
     }
 
@@ -130,6 +128,26 @@ contract Master {
         
         ILeverageNFT leverageNFT = ILeverageNFT(centralRegistry.core("LEVERAGE_NFT"));
         address proxyAddress = leverageNFT.tokenIdToProxy(_tokenId);
+
+        IProxy proxy = IProxy(proxyAddress);
+
+        uint256 marginAmount = _positionParams.marginAmountOrCollateralReductionAmount;
+
+        uint256 marginType = proxy.MARGIN_TYPE();
+
+        IERC20 marginToken;
+        
+        if (marginType == 0) {
+            address quoteToken = proxy.QUOTE_TOKEN();
+            marginToken = IERC20(quoteToken);
+            marginToken.safeTransferFrom(msg.sender, proxyAddress, marginAmount);
+        } else if (marginType == 1) {
+            address baseToken = proxy.BASE_TOKEN();
+            marginToken = IERC20(baseToken);
+            marginToken.safeTransferFrom(msg.sender, proxyAddress, marginAmount);
+        } else {
+            revert InvalidMarginType();
+        }
 
         IProxy(proxyAddress).addToPosition(_positionParams.marginAmountOrCollateralReductionAmount, _positionParams.flashLoanAmount,_positionParams.pathDefinition);
     }
