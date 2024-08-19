@@ -45,25 +45,25 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate 
     }
 
 
-    function createAndAddToPosition(
-        uint256 _marginAmount,
-        uint256 _flashLoanAmount,
-        bytes memory _odosTransactionData
-    ) override onlyMaster external {
+    // function createAndAddToPosition(
+    //     uint256 _marginAmount,
+    //     uint256 _flashLoanAmount,
+    //     bytes memory _odosTransactionData
+    // ) override onlyMaster external {
 
-        IERC20(QUOTE_TOKEN).safeTransferFrom(msg.sender, address(this), _marginAmount);
+    //     IERC20(QUOTE_TOKEN).safeTransferFrom(msg.sender, address(this), _marginAmount);
 
-        Action action = Action.ADD;
+    //     Action action = Action.ADD;
 
-        bytes memory data = abi.encode(action, _marginAmount, _odosTransactionData);
+    //     bytes memory data = abi.encode(action, _marginAmount, _odosTransactionData);
 
-        ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
+    //     ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
 
-        address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
+    //     address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
 
-        IPool(poolAddress).flashLoanSimple(address(this), QUOTE_TOKEN, _flashLoanAmount, data, 0);
+    //     IPool(poolAddress).flashLoanSimple(address(this), QUOTE_TOKEN, _flashLoanAmount, data, 0);
 
-    }
+    // }
 
     /// @notice Adds to the leveraged position using a flash loan and Odos transaction
     /// @dev This function can only be called by the master contract
@@ -75,8 +75,6 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate 
         uint256 _flashLoanAmount,
         bytes memory _odosTransactionData
         ) override onlyMaster external {
-
-        IERC20(QUOTE_TOKEN).safeTransferFrom(_getNFTOwner(), address(this), _marginAmount); 
 
         Action action = Action.ADD;
 

@@ -46,8 +46,6 @@ contract Short_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver 
         bytes memory _odosTransactionData
     ) override onlyMaster external {
 
-        IERC20(BASE_TOKEN).safeTransferFrom(_getNFTOwner(), address(this), _marginAmount);
-
         Action action = Action.ADD;
 
         bytes memory data = abi.encode(action, _marginAmount, _odosTransactionData);
@@ -102,25 +100,25 @@ contract Short_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver 
         
     }
 
-    function createAndAddToPosition(
-        uint256 _marginAmount,
-        uint256 _flashLoanAmount,
-        bytes memory _odosTransactionData
-    ) override onlyMaster external {
+    // function createAndAddToPosition(
+    //     uint256 _marginAmount,
+    //     uint256 _flashLoanAmount,
+    //     bytes memory _odosTransactionData
+    // ) override onlyMaster external {
 
-        IERC20(BASE_TOKEN).safeTransferFrom(msg.sender, address(this), _marginAmount);
+    //     IERC20(BASE_TOKEN).safeTransferFrom(msg.sender, address(this), _marginAmount);
 
-        Action action = Action.ADD;
+    //     Action action = Action.ADD;
 
-        bytes memory data = abi.encode(action, _marginAmount, _odosTransactionData);
+    //     bytes memory data = abi.encode(action, _marginAmount, _odosTransactionData);
 
-        ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
+    //     ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
 
-        address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
+    //     address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
 
-        IPool(poolAddress).flashLoanSimple(address(this), BASE_TOKEN, _flashLoanAmount, data, 0);
+    //     IPool(poolAddress).flashLoanSimple(address(this), BASE_TOKEN, _flashLoanAmount, data, 0);
 
-    }
+    // }
 
     function removeFromPosition(
         uint256 _quoteReductionAmount,
