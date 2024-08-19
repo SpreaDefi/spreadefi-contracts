@@ -2,6 +2,25 @@
 
 This is a guide to calculate required values for the frontend.
 
+# Workflow
+#### Creating and adding to position
+In master, call `createAndAddToPosition` with the required params. The flash loaned amount will define the leverage of the position.
+
+### Modifying the position
+#### Increasing leverage
+Using `addToPosition` - take a flash loan with the desired amount to increase the leverage. Use 0 as margin add. Should scale with the existing collateral.
+
+*TODO: remove check that requires margin add to be zero*
+
+Using `removeFromPosition` - dont flash loan anything which means you dont repay anything, just choose the amount of margin to remove
+
+*TODO: add a case where the user enters bytes(0) into the path definition to not swap anything. need to add an if statement to check if the path definition is empty and not swap anything.*
+
+#### Decreasing leverage
+To add margin, we can deposit tokens into the zerolend lending pool on behalf of the proxy. This will reduce the leverage of the position. Another option is to add another function which just adds margin to the position.
+
+To reduce the amount of the loan, we can use `removeFromPosition` with the desired amount of loan token to repay. And the corresponding amount of margin to unlock that matches the amount of loan token to repay.
+
 ## Long Quote
 
 Long Position is a position where you are long on the base token and short on the quote token.
