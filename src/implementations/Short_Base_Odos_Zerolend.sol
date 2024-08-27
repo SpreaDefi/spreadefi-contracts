@@ -76,7 +76,7 @@ contract Short_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver 
         // Approve the flash loan amount + flashLoanAmount to the Odos Router
         baseToken.safeIncreaseAllowance(odosRouterAddress, _flashLoanAmount + baseTotal);
 
-        (uint256 baseIn, uint256 quoteOut) = _swapBaseForQuote(_transactionData);
+        (, uint256 quoteOut) = _swapBaseForQuote(_transactionData);
 
         // approve quote token to the lending pool
         quoteToken.safeIncreaseAllowance(poolAddress, quoteOut);
@@ -133,7 +133,15 @@ contract Short_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver 
 
         address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
 
-        IPool(poolAddress).flashLoanSimple(address(this), BASE_TOKEN, _flashLoanAmount, data, 0);
+        if (_flashLoanAmount == 0) {
+
+            _removePosition(0, _quoteReductionAmount, _transactionData, 0);
+
+        } else {
+
+            IPool(poolAddress).flashLoanSimple(address(this), BASE_TOKEN, _flashLoanAmount, data, 0);
+            
+        }
     }
 
     function _removePosition(
@@ -150,9 +158,13 @@ contract Short_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver 
         IERC20 baseToken = IERC20(BASE_TOKEN);
         IERC20 quoteToken = IERC20(QUOTE_TOKEN);
 
-        baseToken.safeIncreaseAllowance(poolAddress, _flashLoanAmount);
+        if (_flashLoanAmount == 0) {
 
-        pool.repay(BASE_TOKEN, _flashLoanAmount, 2, address(this));
+            baseToken.safeIncreaseAllowance(poolAddress, _flashLoanAmount);
+
+            pool.repay(BASE_TOKEN, _flashLoanAmount, 2, address(this));
+
+        }
 
         uint256 quoteAmountUnlocked = pool.withdraw(QUOTE_TOKEN, _quoteReductionAmount, address(this));
 
@@ -164,9 +176,15 @@ contract Short_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver 
             quoteToken.safeIncreaseAllowance(poolAddress, quoteAmountUnlocked - quoteIn);
             pool.deposit(QUOTE_TOKEN, quoteAmountUnlocked - quoteIn, address(this), 0);
         }
-        if (baseOut > _totalDebt) {
-            uint256 marginReturn = baseOut - _totalDebt;
-            baseToken.safeTransfer(_getNFTOwner(), marginReturn);
+
+        if (_totalDebt > 0) {
+            if (baseOut > _totalDebt) {
+                uint256 marginReturn = baseOut - _totalDebt;
+                baseToken.safeTransfer(_getNFTOwner(), marginReturn);
+            }
+        }
+        else {
+            baseToken.safeTransfer(_getNFTOwner(), baseOut);
         }
 
         // reset approvals

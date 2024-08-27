@@ -117,7 +117,7 @@ contract Long_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver {
 
         quoteToken.safeIncreaseAllowance(odosRouterAddress, _flashLoanAmount);
 
-        (uint256 quoteIn, uint256 baseOut) = _swapQuoteForBase(_odosTransactionData);
+        (, uint256 baseOut) = _swapQuoteForBase(_odosTransactionData);
 
         uint256 baseAmountDeposit = _marginAmount + baseOut;
 
@@ -149,15 +149,23 @@ contract Long_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver {
         bytes memory _odosTransactionData
     ) override onlyMaster external {
             
+        if (_flashLoanAmount == 0) {
+
+            _removePosition(_baseReductionAmount, 0, _odosTransactionData, 0);
+
+        } else {
+
             Action action = Action.REMOVE;
-    
+
             bytes memory data = abi.encode(action, _baseReductionAmount, _odosTransactionData);
-    
+
             ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
-    
+
             address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
-    
+
             IPool(poolAddress).flashLoanSimple(address(this), QUOTE_TOKEN, _flashLoanAmount, data, 0);
+            
+        }
     }
 
     function _removePosition(
@@ -173,9 +181,12 @@ contract Long_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver {
         ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
         address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
         IPool pool = IPool(poolAddress);
-        quoteToken.safeIncreaseAllowance(poolAddress, _flashLoanAmount);
 
-        pool.repay(QUOTE_TOKEN, _flashLoanAmount, 2,address(this));
+        if (_flashLoanAmount > 0) {
+            quoteToken.safeIncreaseAllowance(poolAddress, _flashLoanAmount);
+
+            pool.repay(QUOTE_TOKEN, _flashLoanAmount, 2,address(this));
+        }
 
         (address baseAtokenAddress,) = _getReserveData(BASE_TOKEN);
 
@@ -189,17 +200,24 @@ contract Long_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver {
 
         (uint256 baseIn, uint256 quoteOut) = _swapBaseForQuote(_odosTransactionData);
 
-        if (quoteOut > _totalDebt) {
-            // re supply extra quote token to the pool
-            uint256 extra = quoteOut - _totalDebt;
-            quoteToken.safeIncreaseAllowance(poolAddress, extra);
-            pool.deposit(QUOTE_TOKEN, extra, address(this), 0);
+        if (_totalDebt > 0) {
+
+            if (quoteOut > _totalDebt) {
+                // re supply extra quote token to the pool
+                uint256 extra = quoteOut - _totalDebt;
+                quoteToken.safeIncreaseAllowance(poolAddress, extra);
+                pool.deposit(QUOTE_TOKEN, extra, address(this), 0);
+            }
+
         }
+        
         if (baseIn < _baseReductionAmount) {
             // send to user
             uint256 marginReturn = _baseReductionAmount - baseIn;
             baseToken.safeTransfer(_getNFTOwner(), marginReturn);
         }
+
+
 
         // reset allowances
         quoteToken.approve(poolAddress, 0);
@@ -242,9 +260,6 @@ contract Long_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver {
 
         _swapAndSettleClose(centralRegistry, baseAmountUnlocked, _odosTransactionData, _totalDebt, baseTokenAddress, quoteTokenAddress);
 
-
-
-
     }
 
     function _repayClose(uint256 _flashLoanAmount, address _poolAddress, address _quoteTokenAddress ) internal {
@@ -282,7 +297,7 @@ contract Long_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver {
 
             baseToken.safeIncreaseAllowance(odosRouterAddress, _baseAmountUnlocked);
 
-            (uint256 baseIn, uint256 quoteOut) = _swapBaseForQuote(_odosTransactionData);
+            (, uint256 quoteOut) = _swapBaseForQuote(_odosTransactionData);
 
             if(!(quoteOut >= _totalDebt)) revert NotEnoughAmountout();
 

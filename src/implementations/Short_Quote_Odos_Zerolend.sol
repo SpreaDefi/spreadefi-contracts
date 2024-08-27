@@ -85,7 +85,7 @@ contract Short_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate
 
         baseToken.safeIncreaseAllowance(odosRouterAddress, _flashLoanAmount);
 
-        (uint256 baseIn, uint256 quoteOut) = _swapBaseForQuote(_transactionData);
+        (, uint256 quoteOut) = _swapBaseForQuote(_transactionData);
 
         uint256 quoteTotal = _marginAddAmount + quoteOut;
 
@@ -136,7 +136,12 @@ contract Short_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate
         // 1. Flash loan the _flashLoanAmount
         ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
         address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
-        IPool(poolAddress).flashLoanSimple(address(this), BASE_TOKEN, _flashLoanAmount, data, 0);
+
+        if (_flashLoanAmount == 0) {
+            _removePosition(0, _baseReduction, _odosTransactionData, 0);
+        } else {
+            IPool(poolAddress).flashLoanSimple(address(this), BASE_TOKEN, _flashLoanAmount, data, 0);
+        }
     }
 
 
@@ -155,37 +160,46 @@ contract Short_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate
         IERC20 baseToken = IERC20(BASE_TOKEN);
         IERC20 quoteToken = IERC20(QUOTE_TOKEN);
 
+        if (_flashLoanAmount > 0) {
 
-        baseToken.safeIncreaseAllowance(poolAddress, _flashLoanAmount);
+            baseToken.safeIncreaseAllowance(poolAddress, _flashLoanAmount);
 
-        pool.repay(BASE_TOKEN, _flashLoanAmount, 2, address(this));
+            pool.repay(BASE_TOKEN, _flashLoanAmount, 2, address(this));
+
+        }
 
         uint256 quoteAmountUnlocked = pool.withdraw(QUOTE_TOKEN, _quoteReductionAmount, address(this));
 
-        quoteToken.safeIncreaseAllowance(odosRouterAddress, quoteAmountUnlocked);
+        if (_totalDebt > 0) {
 
-        (uint256 quoteIn, uint256 baseOut) = _swapQuoteForBase(_transactionData);
+            quoteToken.safeIncreaseAllowance(odosRouterAddress, quoteAmountUnlocked);
 
-        if (baseOut > _totalDebt) {
-            // re supply the extra base token to the pool
-            uint256 extra = baseOut - _totalDebt;
+            (uint256 quoteIn, uint256 baseOut) = _swapQuoteForBase(_transactionData);
 
-            baseToken.safeIncreaseAllowance(poolAddress, extra);
+            if (baseOut > _totalDebt) {
+                // re supply the extra base token to the pool
+                uint256 extra = baseOut - _totalDebt;
 
-            pool.deposit(BASE_TOKEN, extra, address(this), 0);
+                baseToken.safeIncreaseAllowance(poolAddress, extra);
 
-        }
-        if(quoteIn < _quoteReductionAmount) {
+                pool.deposit(BASE_TOKEN, extra, address(this), 0);
+
+            }
+
+            if(quoteIn < _quoteReductionAmount) {
+                // send to the user
+                uint256 marginReturn = quoteAmountUnlocked - quoteIn;
+                quoteToken.safeTransfer(_getNFTOwner(), marginReturn);
+            }
+
+        } else {
             // send to the user
-            uint256 marginReturn = quoteAmountUnlocked - quoteIn;
-            quoteToken.safeTransfer(_getNFTOwner(), marginReturn);
+            quoteToken.safeTransfer(_getNFTOwner(), quoteAmountUnlocked);
         }
 
         // reset allowances
         quoteToken.approve(odosRouterAddress, 0);
         baseToken.approve(poolAddress, 0);
-
-       
 
     }
 
@@ -227,13 +241,13 @@ contract Short_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate
 
         IERC20(quoteATokenAddress).safeIncreaseAllowance(poolAddress, baseATokenBalance);
 
-        uint256 amountUnlocked = pool.withdraw(QUOTE_TOKEN, baseATokenBalance, address(this));
+        pool.withdraw(QUOTE_TOKEN, baseATokenBalance, address(this));
 
         address odosRouterAddress = centralRegistry.protocols("ODOS_ROUTER");
 
         quoteToken.safeIncreaseAllowance(odosRouterAddress, baseATokenBalance);
 
-        (uint256 quoteIn, uint256 baseOut) = _swapQuoteForBase(_odosTransactionData);
+        _swapQuoteForBase(_odosTransactionData);
 
         uint256 leftoverQuote = quoteToken.balanceOf(address(this));
         uint256 baseBalance = IERC20(BASE_TOKEN).balanceOf(address(this));

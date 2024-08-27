@@ -98,14 +98,20 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate 
         uint256 _flashLoanAmount,
         bytes calldata _odosTransactionData) override onlyMaster external {
 
-        Action action = Action.REMOVE;
+        if (_flashLoanAmount == 0) {
+            _removePosition(0, _baseReduction, _odosTransactionData, 0);
+        } else {
 
-        bytes memory data = abi.encode(action, _baseReduction, _odosTransactionData);
+            Action action = Action.REMOVE;
 
-        // 1. Flash loan the _flashLoanAmount
-        ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
-        address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
-        IPool(poolAddress).flashLoanSimple(address(this), QUOTE_TOKEN, _flashLoanAmount, data, 0);
+            bytes memory data = abi.encode(action, _baseReduction, _odosTransactionData);
+
+            // 1. Flash loan the _flashLoanAmount
+            ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
+            address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
+            IPool(poolAddress).flashLoanSimple(address(this), QUOTE_TOKEN, _flashLoanAmount, data, 0);
+
+        }
     }
 
     /// @notice Closes the leveraged position using a flash loan and Odos transaction
@@ -251,7 +257,7 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate 
         quoteToken.safeIncreaseAllowance(odosRouterAddress, swapInAmount);
 
         // 1. Swap the flash loaned (quote) amount + margin (quote) for the base token
-        (uint256 _marginAmountIn,uint256 baseAmountOut) = _swapQuoteForBase(_transactionData);
+        (,uint256 baseAmountOut) = _swapQuoteForBase(_transactionData);
 
         // 2. Deposit the base token to the money market
         address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
@@ -297,9 +303,14 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate 
         ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
         address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
         IPool pool = IPool(poolAddress);
-        quoteToken.safeIncreaseAllowance(poolAddress, _flashLoanAmount);
 
-        pool.repay(QUOTE_TOKEN, _flashLoanAmount, 2, address(this));
+        if(_flashLoanAmount == 0) {
+
+            quoteToken.safeIncreaseAllowance(poolAddress, _flashLoanAmount);
+
+            pool.repay(QUOTE_TOKEN, _flashLoanAmount, 2, address(this));
+
+        }
 
         // 2. Withdraw the base token that was unlocked
         (address baseAtokenAddress,) = _getReserveData(BASE_TOKEN);
@@ -313,15 +324,21 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate 
 
         baseToken.safeIncreaseAllowance(odosRouterAddress, baseAmountUnlocked);
 
-        (uint256 baseIn, uint256 quoteOut) = _swapBaseForQuote( _transactionData);
+        (, uint256 quoteOut) = _swapBaseForQuote( _transactionData);
 
         // 4. Refund the remaining quote token
 
-        if (quoteOut > _totalDebt) {
+        if(_totalDebt > 0) {
 
-            uint256 remainingBalance = quoteOut - _totalDebt;
-     
-            quoteToken.safeTransfer(_getNFTOwner(), remainingBalance);
+            if (quoteOut > _totalDebt) {
+
+                uint256 remainingBalance = quoteOut - _totalDebt;
+        
+                quoteToken.safeTransfer(_getNFTOwner(), remainingBalance);
+            } 
+
+        } else {
+                quoteToken.safeTransfer(_getNFTOwner(), quoteOut);
         }
 
         // reset allowances
@@ -362,7 +379,7 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate 
         // 3. Swap the unlocked base token for quote token
         address odosRouterAddress = centralRegistry.protocols("ODOS_ROUTER");
         baseToken.safeIncreaseAllowance(odosRouterAddress, baseAmountUnlocked);
-        (uint256 amountIn, uint256 amountOut) = _swapBaseForQuote( _transactionData);
+        (, uint256 amountOut) = _swapBaseForQuote( _transactionData);
 
         // 4. Approve the pool to transfer the necessary amount for the flash loan repayment
         if (amountOut > totalDebt) {
