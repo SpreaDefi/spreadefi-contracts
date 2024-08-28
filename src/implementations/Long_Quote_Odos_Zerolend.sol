@@ -76,15 +76,22 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate 
         bytes memory _odosTransactionData
         ) override onlyMaster external {
 
-        Action action = Action.ADD;
+        if (_flashLoanAmount > 0) {
 
-        bytes memory data = abi.encode(action, _marginAmount, _odosTransactionData);
+            Action action = Action.ADD;
 
-        ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
-        
-        address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
+            bytes memory data = abi.encode(action, _marginAmount, _odosTransactionData);
 
-        IPool(poolAddress).flashLoanSimple(address(this), QUOTE_TOKEN, _flashLoanAmount, data, 0);
+            ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
+            
+            address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
+
+            IPool(poolAddress).flashLoanSimple(address(this), QUOTE_TOKEN, _flashLoanAmount, data, 0);
+
+        } else {
+
+            _addPosition(0, _marginAmount, _odosTransactionData, 0);
+        }
         
     }
 
@@ -267,8 +274,12 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate 
 
         pool.supply(BASE_TOKEN, baseAmountOut, address(this), 0);
 
-        // 3. Borrow the money market borrow amount
-        pool.borrow(QUOTE_TOKEN, _totalDebt, 2, 0, address(this));
+        if (_totalDebt > 0) {
+
+            // 3. Borrow the money market borrow amount
+            pool.borrow(QUOTE_TOKEN, _totalDebt, 2, 0, address(this));
+
+        }
 
         // transfer leftover quote token to the owner
         uint256 remainingQuoteBalance = quoteToken.balanceOf(address(this)) - _totalDebt;

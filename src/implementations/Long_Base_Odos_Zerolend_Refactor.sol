@@ -85,16 +85,23 @@ contract Long_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver {
         bytes memory _odosTransactionData
     )
     override onlyMaster external {
-        
-        Action action = Action.ADD;
 
-        bytes memory data = abi.encode(action, _marginAmount, _odosTransactionData);
+        if (_flashLoanAmount > 0) {
 
-        ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
+            Action action = Action.ADD;
 
-        address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
+            bytes memory data = abi.encode(action, _marginAmount, _odosTransactionData);
 
-        IPool(poolAddress).flashLoanSimple(address(this), QUOTE_TOKEN, _flashLoanAmount, data, 0);
+            ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
+
+            address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
+
+            IPool(poolAddress).flashLoanSimple(address(this), QUOTE_TOKEN, _flashLoanAmount, data, 0);
+
+        } else {
+
+            _addPosition(_marginAmount, _flashLoanAmount, _odosTransactionData, 0);
+        }
     }
 
     function _addPosition(
@@ -113,33 +120,44 @@ contract Long_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver {
 
         IPool pool = IPool(poolAddress);
 
-        address odosRouterAddress = centralRegistry.protocols("ODOS_ROUTER");
+        if(_flashLoanAmount > 0) {
+            address odosRouterAddress = centralRegistry.protocols("ODOS_ROUTER");
 
-        quoteToken.safeIncreaseAllowance(odosRouterAddress, _flashLoanAmount);
+            quoteToken.safeIncreaseAllowance(odosRouterAddress, _flashLoanAmount);
 
-        (, uint256 baseOut) = _swapQuoteForBase(_odosTransactionData);
+            (, uint256 baseOut) = _swapQuoteForBase(_odosTransactionData);
 
-        uint256 baseAmountDeposit = _marginAmount + baseOut;
+            uint256 baseAmountDeposit = _marginAmount + baseOut;
 
-        baseToken.safeIncreaseAllowance(poolAddress, baseAmountDeposit);
+            baseToken.safeIncreaseAllowance(poolAddress, baseAmountDeposit);
 
-        pool.deposit(BASE_TOKEN, baseAmountDeposit, address(this), 0);
+            pool.deposit(BASE_TOKEN, baseAmountDeposit, address(this), 0);
 
-        pool.borrow(QUOTE_TOKEN, _totalDebt, 2, 0, address(this));
+            pool.borrow(QUOTE_TOKEN, _totalDebt, 2, 0, address(this));
 
-        quoteToken.safeIncreaseAllowance(poolAddress, _totalDebt);
+            quoteToken.safeIncreaseAllowance(poolAddress, _totalDebt);
 
-        // return any leftover base token to the user
-        uint256 leftoverBase = baseToken.balanceOf(address(this));
+            // return any leftover base token to the user
+            uint256 leftoverBase = baseToken.balanceOf(address(this));
 
-        // reset allowances
-        quoteToken.approve(poolAddress, 0);
-        quoteToken.approve(odosRouterAddress, 0);
-        baseToken.approve(poolAddress, 0);
+            // reset allowances
+            quoteToken.approve(poolAddress, 0);
+            quoteToken.approve(odosRouterAddress, 0);
+           
 
-        if (leftoverBase > 0) {
-            baseToken.safeTransfer(_getNFTOwner(), leftoverBase);
-        }  
+            if (leftoverBase > 0) {
+                baseToken.safeTransfer(_getNFTOwner(), leftoverBase);
+            } 
+            
+        } else { // if no flash loan
+
+            baseToken.safeIncreaseAllowance(poolAddress, _marginAmount);
+            
+            pool.deposit(BASE_TOKEN, _marginAmount, address(this), 0);
+        }
+            // reset allowances for both cases
+            baseToken.approve(poolAddress, 0);
+ 
 
     }
 
@@ -342,7 +360,9 @@ contract Long_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver {
             _closePosition(flashLoanAmount, odosTransactionData_, totalDebt);
         }
 
+
         IERC20(QUOTE_TOKEN).safeIncreaseAllowance(msg.sender, totalDebt);
+
 
         return true;
     }

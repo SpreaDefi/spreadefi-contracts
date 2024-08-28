@@ -50,15 +50,23 @@ contract Short_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate
         bytes memory _odosTransactionData
         ) override onlyMaster external {
 
-        Action action = Action.ADD;
+        if (_flashLoanAmount > 0) {
 
-        bytes memory data = abi.encode(action, _marginAmount, _odosTransactionData);
+            Action action = Action.ADD;
 
-        ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
+            bytes memory data = abi.encode(action, _marginAmount, _odosTransactionData);
 
-        address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
+            ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
 
-        IPool(poolAddress).flashLoanSimple(address(this), BASE_TOKEN, _flashLoanAmount, data, 0);
+            address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
+
+            IPool(poolAddress).flashLoanSimple(address(this), BASE_TOKEN, _flashLoanAmount, data, 0);
+
+        } else {
+
+            _addPosition(0, _marginAmount, _odosTransactionData, 0);
+        
+        }
     }
 
 
@@ -77,28 +85,43 @@ contract Short_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate
         IERC20 baseToken = IERC20(BASE_TOKEN);
         IERC20 quoteToken = IERC20(QUOTE_TOKEN);
 
-        address odosRouterAddress = ICentralRegistry(centralRegistryAddress).protocols("ODOS_ROUTER");
         address poolAddress = ICentralRegistry(centralRegistryAddress).protocols("ZEROLEND_POOL");
         IPool pool = IPool(poolAddress);
 
-        // swap base for quote
+        if (_flashLoanAmount > 0) {
 
-        baseToken.safeIncreaseAllowance(odosRouterAddress, _flashLoanAmount);
+            // swap base for quote
 
-        (, uint256 quoteOut) = _swapBaseForQuote(_transactionData);
+            address odosRouterAddress = ICentralRegistry(centralRegistryAddress).protocols("ODOS_ROUTER");
 
-        uint256 quoteTotal = _marginAddAmount + quoteOut;
+            baseToken.safeIncreaseAllowance(odosRouterAddress, _flashLoanAmount);
 
-        // Approve the Zerolend pool to spend the quote token
-        quoteToken.safeIncreaseAllowance(poolAddress, quoteTotal);
+            (, uint256 quoteOut) = _swapBaseForQuote(_transactionData);
 
-        // deposit the quote token to the Zerolend pool
-        pool.deposit(QUOTE_TOKEN, quoteTotal, address(this), 0);
+            uint256 quoteTotal = _marginAddAmount + quoteOut;
 
-        // borrow base currency using quote token as collateral
-        pool.borrow(BASE_TOKEN, _totalDebt, 2, 0, address(this)); // enter the input amount
-        
-        // reset allowances
+            // Approve the Zerolend pool to spend the quote token
+            quoteToken.safeIncreaseAllowance(poolAddress, quoteTotal);
+
+            // deposit the quote token to the Zerolend pool
+            pool.deposit(QUOTE_TOKEN, quoteTotal, address(this), 0);
+
+            // borrow base currency using quote token as collateral
+            pool.borrow(BASE_TOKEN, _totalDebt, 2, 0, address(this)); // enter the input amount
+            
+            // reset allowances
+            quoteToken.approve(poolAddress, 0);
+
+        } else {
+
+            // Approve the Zerolend pool to spend the quote token
+            quoteToken.safeIncreaseAllowance(poolAddress, _marginAddAmount);
+
+            // deposit the quote token to the Zerolend pool
+            pool.deposit(QUOTE_TOKEN, _marginAddAmount, address(this), 0);
+
+        }
+
         quoteToken.approve(poolAddress, 0);
 
     }

@@ -46,15 +46,23 @@ contract Short_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver 
         bytes memory _odosTransactionData
     ) override onlyMaster external {
 
-        Action action = Action.ADD;
+        if (_flashLoanAmount > 0) {
 
-        bytes memory data = abi.encode(action, _marginAmount, _odosTransactionData);
+            Action action = Action.ADD;
 
-        ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
+            bytes memory data = abi.encode(action, _marginAmount, _odosTransactionData);
 
-        address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
+            ICentralRegistry centralRegistry = ICentralRegistry(centralRegistryAddress);
 
-        IPool(poolAddress).flashLoanSimple(address(this), BASE_TOKEN, _flashLoanAmount, data, 0);
+            address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
+
+            IPool(poolAddress).flashLoanSimple(address(this), BASE_TOKEN, _flashLoanAmount, data, 0);
+
+        } else {
+
+            _addPosition(_marginAmount, _flashLoanAmount, _odosTransactionData, 0);
+
+        }
     }
 
     function _addPosition(
@@ -74,7 +82,7 @@ contract Short_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver 
         uint256 baseTotal = _flashLoanAmount + _marginAddAmount;
 
         // Approve the flash loan amount + flashLoanAmount to the Odos Router
-        baseToken.safeIncreaseAllowance(odosRouterAddress, _flashLoanAmount + baseTotal);
+        baseToken.safeIncreaseAllowance(odosRouterAddress, baseTotal);
 
         (, uint256 quoteOut) = _swapBaseForQuote(_transactionData);
 
@@ -84,7 +92,11 @@ contract Short_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver 
         // lend quote token to the pool
         pool.deposit(QUOTE_TOKEN, quoteOut, address(this), 0);
 
-        pool.borrow(BASE_TOKEN, _totalDebt, 2, 0, address(this));
+        if (_totalDebt > 0) {
+
+            pool.borrow(BASE_TOKEN, _totalDebt, 2, 0, address(this));
+
+        }
         
         // get leftover base amount
         uint256 baseBalance = baseToken.balanceOf(address(this));
