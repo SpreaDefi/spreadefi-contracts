@@ -315,7 +315,7 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate 
         address poolAddress = centralRegistry.protocols("ZEROLEND_POOL");
         IPool pool = IPool(poolAddress);
 
-        if(_flashLoanAmount == 0) {
+        if(_flashLoanAmount > 0) {
 
             quoteToken.safeIncreaseAllowance(poolAddress, _flashLoanAmount);
 
