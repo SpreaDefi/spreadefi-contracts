@@ -208,17 +208,17 @@ contract Long_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver {
 
         (address baseAtokenAddress,) = _getReserveData(BASE_TOKEN);
 
-        IERC20(baseAtokenAddress).safeIncreaseAllowance(poolAddress, _baseReductionAmount);
+        // IERC20(baseAtokenAddress).safeIncreaseAllowance(poolAddress, _baseReductionAmount);
 
         uint256 baseAmountUnlocked = pool.withdraw(BASE_TOKEN, _baseReductionAmount, address(this));
 
-        address odosRouterAddress = centralRegistry.protocols("ODOS_ROUTER");
+        if (_flashLoanAmount > 0) {
 
-        baseToken.safeIncreaseAllowance(odosRouterAddress, baseAmountUnlocked);
+            address odosRouterAddress = centralRegistry.protocols("ODOS_ROUTER");
+            
+            baseToken.safeIncreaseAllowance(odosRouterAddress, baseAmountUnlocked);
 
-        (uint256 baseIn, uint256 quoteOut) = _swapBaseForQuote(_odosTransactionData);
-
-        if (_totalDebt > 0) {
+            (uint256 baseIn, uint256 quoteOut) = _swapBaseForQuote(_odosTransactionData);
 
             if (quoteOut > _totalDebt) {
                 // re supply extra quote token to the pool
@@ -227,19 +227,23 @@ contract Long_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver {
                 pool.deposit(QUOTE_TOKEN, extra, address(this), 0);
             }
 
-        }
-        
-        if (baseIn < _baseReductionAmount) {
-            // send to user
-            uint256 marginReturn = _baseReductionAmount - baseIn;
-            baseToken.safeTransfer(_getNFTOwner(), marginReturn);
-        }
+            if (baseIn < _baseReductionAmount) {
+                // send to user
+                uint256 marginReturn = _baseReductionAmount - baseIn;
+                baseToken.safeTransfer(_getNFTOwner(), marginReturn);
+            }
 
+            baseToken.approve(odosRouterAddress, 0);
+
+        } else {
+            // send to user
+            baseToken.safeTransfer(_getNFTOwner(), baseAmountUnlocked);
+        }
 
 
         // reset allowances
         quoteToken.approve(poolAddress, 0);
-        baseToken.approve(odosRouterAddress, 0);
+        
 
 
     }

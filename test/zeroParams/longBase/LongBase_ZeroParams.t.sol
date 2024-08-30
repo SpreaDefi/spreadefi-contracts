@@ -42,12 +42,14 @@ contract LongBase_ZeroParams is Test, IERC721Receiver {
 
     /* %%%%%%%%%%%%%%%% ODOS API VARIABLES %%%%%%%%%%%%%%%% */
 
-    bytes odosAdd = hex"83bd37f90001176211869ca2b568f2a7d4ee941e073a821ee1ff00013aab2285ddcddad8edf438c1bab47e1a9d05a9b404237bdcc0030f39bc028f5c00017D2b63A9ab475397d9c247468803F25Cf6523B76000000014f81992FCe2E1846dD528eC0102e6eE1f61ed3e2000000000a03030b0158672eeb0a0100010201015ef6d9f90a02000302010197566a050a0200040201000d0200050201040000020a0000060701017a7d16450a0101080900000a01010a0900ff000000000000000000000000000000000000000000000000efd5ec2cc043e3bd3c840f7998cc42ee712700ba176211869ca2b568f2a7d4ee941e073a821ee1ffd5539d0360438a66661148c633a9f0965e482845586733678b9ac9da43dd7cb83bbb41d23677dfc35615a7b1619980f7d6b5e7f69f3dc093dfe0c95c1947b87d35e9f1cd53cede1ad6f7be44c12212b8a219439258ca9da29e9cc4ce5596924745e12b93f11bb479dc3daffe63989b6b95f6c119225dac28e5d7c2a44ffddf6b295a15c148167daaaf5cf34fa22206521a460aa6b21a089c3b48ffd0c79d5fd5000000000000000000000000000000000000000000000000";
+    bytes odosAdd = hex"83bd37f90001176211869ca2b568f2a7d4ee941e073a821ee1ff00013aab2285ddcddad8edf438c1bab47e1a9d05a9b404232a6160030f4900028f5c000156c85a254DD12eE8D9C04049a4ab62769Ce98210000000014f81992FCe2E1846dD528eC0102e6eE1f61ed3e20000000004010205000a0100010201020a0001030400ff000000000000000000000000000064bccad8e7302e81b09894f56f6bba85ae82cd03176211869ca2b568f2a7d4ee941e073a821ee1ff5afda31027c3e6a03c77a113ffc031b564abbf05e5d7c2a44ffddf6b295a15c148167daaaf5cf34f00000000000000000000000000000000";
 
     bytes odosRemove = hex'83bd37f900013aab2285ddcddad8edf438c1bab47e1a9d05a9b40001176211869ca2b568f2a7d4ee941e073a821ee1ff030188940403933b6e028f5c00017D2b63A9ab475397d9c247468803F25Cf6523B76000000014f81992FCe2E1846dD528eC0102e6eE1f61ed3e20000000004010205000801000102020a0001030400ff000000000000000000000000000000f5783661c3bac33373ecf8977fc0df1feb7886fa3aab2285ddcddad8edf438c1bab47e1a9d05a9b47077f0cff76077d0ebb335b607db574400510557e5d7c2a44ffddf6b295a15c148167daaaf5cf34f00000000000000000000000000000000';
 
     bytes odosClose = hex'83bd37f900013aab2285ddcddad8edf438c1bab47e1a9d05a9b40001176211869ca2b568f2a7d4ee941e073a821ee1ff031e5cde0446859ebe028f5c00017D2b63A9ab475397d9c247468803F25Cf6523B76000000014f81992FCe2E1846dD528eC0102e6eE1f61ed3e2000000000702030801b96655730a0100010201000a0201030200037a3c4fa90a0201040500039316a7c10a0201060500020d0201070500ff000000000000000000000000008e80016b025c89a6a270b399f5ebfb734be58ada3aab2285ddcddad8edf438c1bab47e1a9d05a9b40ab43d592f8fa273ce900d8749c854419e8e1459586733678b9ac9da43dd7cb83bbb41d23677dfc3e5d7c2a44ffddf6b295a15c148167daaaf5cf34f7077f0cff76077d0ebb335b607db5744005105575615a7b1619980f7d6b5e7f69f3dc093dfe0c95c0000000000000000000000000000000000000000';
     
+    bytes odosAddNoMargin = hex'83bd37f90001176211869ca2b568f2a7d4ee941e073a821ee1ff00013aab2285ddcddad8edf438c1bab47e1a9d05a9b40405f5e1000302970e028f5c000156c85a254DD12eE8D9C04049a4ab62769Ce98210000000014f81992FCe2E1846dD528eC0102e6eE1f61ed3e20000000003010203000a0101010201ff0000000000000000000000000000000000000000001d6cbd5ab95fcc04edde14abfa8d363adf4ead00176211869ca2b568f2a7d4ee941e073a821ee1ff000000000000000000000000000000000000000000000000';
+
     /* %%%%%%%%%%%%%%%% ODOS API VARIABLES %%%%%%%%%%%%%%%% */
 
     function setUp() public {
@@ -66,9 +68,6 @@ contract LongBase_ZeroParams is Test, IERC721Receiver {
         centralRegistry.addProtocol("ODOS_ROUTER", OdosRouterAddress);
         centralRegistry.addProtocol("ZEROLEND_POOL", zeroLendAddress);
 
-    }
-
-    function testCreateAndAddPosition() public {
         deal(WBTCAddress, (address(this)), TEN_MILLION_SATS, true);
 
         IERC20(WBTCAddress).approve(address(master), TEN_MILLION_SATS);
@@ -81,13 +80,46 @@ contract LongBase_ZeroParams is Test, IERC721Receiver {
 
         IMaster.PositionParams memory positionParams = IMaster.PositionParams({
             marginAmountOrCollateralReductionAmount: ONE_MILLION_SATS,
-            flashLoanAmount: 596_860000,
+            flashLoanAmount: 589_980000,
             pathDefinition: odosAdd
         });
 
         (uint256 tokenId, address proxyAddress) = IMaster(address(master)).createAndAddToPosition(newPositionParams, positionParams);
 
+    }
 
+    function testAddNoMargin() public {
+
+        IMaster.PositionParams memory positionParams = IMaster.PositionParams({
+            marginAmountOrCollateralReductionAmount: 0,
+            flashLoanAmount: 100_000000,
+            pathDefinition: odosAddNoMargin
+        });
+
+        IMaster(address(master)).addToPosition(0, positionParams);
+
+    }
+
+    function testAddNoFlashloan() public {
+            
+            IMaster.PositionParams memory positionParams = IMaster.PositionParams({
+                marginAmountOrCollateralReductionAmount: 85008,
+                flashLoanAmount: 0,
+                pathDefinition: odosAddNoMargin
+            });
+    
+            IMaster(address(master)).addToPosition(0, positionParams);
+    }
+
+    function testRemoveNoFlashloan() public {
+            
+            IMaster.PositionParams memory positionParams = IMaster.PositionParams({
+                marginAmountOrCollateralReductionAmount: 85008,
+                flashLoanAmount: 0,
+                pathDefinition: odosRemove
+            });
+    
+            IMaster(address(master)).removeFromPosition(0, positionParams);
     }
 
 
