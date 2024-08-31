@@ -170,7 +170,7 @@ contract Short_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver 
         IERC20 baseToken = IERC20(BASE_TOKEN);
         IERC20 quoteToken = IERC20(QUOTE_TOKEN);
 
-        if (_flashLoanAmount == 0) {
+        if (_flashLoanAmount > 0) {
 
             baseToken.safeIncreaseAllowance(poolAddress, _flashLoanAmount);
 
