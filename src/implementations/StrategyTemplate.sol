@@ -73,12 +73,6 @@ abstract contract StrategyTemplate {
         bytes memory _transactionData
         ) onlyMaster external virtual {}
 
-    function createAndAddToPosition(
-        uint256 _marginAmount,
-        uint256 _flashLoanAmount,
-        bytes memory _transactionData
-    ) virtual onlyMaster external {}
-
     function removeFromPosition(
         uint256 _baseReduction, 
         uint256 _flashLoanAmount,
