@@ -12,7 +12,7 @@ import "src/interfaces/ICentralRegistry.sol";
 
 contract Factory {
 
-     /// @notice The central registry contract instance
+    /// @notice The central registry contract instance
     ICentralRegistry public centralRegistry;
 
     /// @notice Error for unauthorized access
@@ -26,13 +26,16 @@ contract Factory {
         _;
     }
 
+    /// @notice used for creating a unique salt
+    mapping(address => uint256) public positionId;
+
     /// @notice Constructor to set the central registry address
     /// @param _centralRegistry The address of the central registry contract
     constructor(address _centralRegistry) {
         centralRegistry = ICentralRegistry(_centralRegistry);
     }
-    
-    /// @notice Creates a new proxy contract and mints a leverage NFT
+
+    /// @notice Creates a new proxy contract using CREATE2 and mints a leverage NFT
     /// @dev This function can only be called by the master contract
     /// @param _to The address that will own the leverage NFT
     /// @param _implementation The address of the implementation contract
@@ -44,16 +47,24 @@ contract Factory {
         address _to, 
         address _implementation, 
         address _quoteToken, 
-        address _baseToken) onlyMaster external returns(uint256 tokenId, address proxyAddress) {
+        address _baseToken) 
+        external 
+        onlyMaster 
+        returns(uint256 tokenId, address proxyAddress) 
+    {
 
-        Proxy proxy = new Proxy(_implementation);
+        bytes32 salt = keccak256(abi.encodePacked(_to, positionId[_to]));
 
-        proxyAddress = address(proxy);
+        proxyAddress = address(new Proxy{salt: salt}(_implementation));
 
         ILeverageNFT leverageNFT = ILeverageNFT(centralRegistry.core("LEVERAGE_NFT"));
 
         tokenId = leverageNFT.mint(_to, proxyAddress);
 
         IProxy(proxyAddress).initialize(address(centralRegistry), tokenId, _quoteToken, _baseToken);
+
+        ++positionId[_to];
+        
     }
+
 }
