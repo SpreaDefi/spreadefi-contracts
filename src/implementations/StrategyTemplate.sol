@@ -20,6 +20,9 @@ abstract contract StrategyTemplate {
     /// @notice The address of the base token
     address public BASE_TOKEN;
 
+    /// @notice The position type (true for long, false for short)
+    uint8 public POSITION_TYPE; 
+
     /// @notice Errors for the strategy contract
     error AlreadyInitialized();
     error Unauthorized();

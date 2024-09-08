@@ -37,6 +37,7 @@ contract Short_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver 
         BASE_TOKEN = _baseToken;
 
         MARGIN_TYPE = 1;
+        POSITION_TYPE = 1;
     }
 
 
