@@ -41,6 +41,7 @@ contract Long_Quote_Odos_Zerolend is IFlashLoanSimpleReceiver, StrategyTemplate 
         BASE_TOKEN = _baseToken;
 
         MARGIN_TYPE = 0;
+        POSITION_TYPE = 0;
 
     }
 
