@@ -22,6 +22,9 @@ contract Long_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver {
         CLOSE
     }
 
+    event debugUint(string message, uint256 value);
+    event debugAddress(string message, address value);
+
     /// @dev Modifier to restrict access to the Zerolend pool
     modifier onlyZerolendPool() {
         address poolAddress = ICentralRegistry(centralRegistryAddress).protocols("ZEROLEND_POOL");
@@ -131,6 +134,11 @@ contract Long_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver {
             uint256 baseAmountDeposit = _marginAmount + baseOut;
 
             baseToken.safeIncreaseAllowance(poolAddress, baseAmountDeposit);
+
+            uint256 baseBalance = baseToken.balanceOf(address(this));
+
+            emit debugUint("BASE BALANCE", baseBalance);
+            emit debugAddress("THIS ADDRESS", address(this));
 
             pool.deposit(BASE_TOKEN, baseAmountDeposit, address(this), 0);
 

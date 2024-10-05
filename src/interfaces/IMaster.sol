@@ -26,7 +26,7 @@ interface IMaster {
 
     function createPosition(NewPositionParams memory params) external returns (uint256 tokenId, address proxyAddress);
 
-    function createAndAddToPosition(NewPositionParams memory _newPositionParams, PositionParams memory _positionParams) external returns (uint256 tokenId, address proxyAddress);
+    function createAndAddToPosition(NewPositionParams memory _newPositionParams, PositionParams memory _positionParams, address _OnBehalfOf) external returns (uint256 tokenId, address proxyAddress);
 
     function addToPosition(uint256 _tokenId, PositionParams memory params) external;
 
