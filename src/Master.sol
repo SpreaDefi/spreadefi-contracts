@@ -68,10 +68,10 @@ contract Master {
 
     }
 
-    function createAndAddToPosition(NewPositionParams memory _newPositionParams, PositionParams memory _positionParams) public returns (uint256 tokenId, address proxyAddress) {
+    function createAndAddToPosition(NewPositionParams memory _newPositionParams, PositionParams memory _positionParams, address _onBehalfOf) public returns (uint256 tokenId, address proxyAddress) {
         address implementationAddress = validatePositionParams(_newPositionParams);
 
-        (tokenId, proxyAddress) = _createPosition(_newPositionParams.quoteToken, _newPositionParams.baseToken, implementationAddress);
+        (tokenId, proxyAddress) = _createPosition(_onBehalfOf, _newPositionParams.quoteToken, _newPositionParams.baseToken, implementationAddress);
 
         IProxy proxy = IProxy(proxyAddress);
 
@@ -105,11 +105,11 @@ contract Master {
 
         address implementationAddress = validatePositionParams(params);
 
-        (tokenId, proxyAddress) = _createPosition(params.quoteToken, params.baseToken, implementationAddress);
+        (tokenId, proxyAddress) = _createPosition(msg.sender,params.quoteToken, params.baseToken, implementationAddress);
         
     }
 
-    function _createPosition(address _quoteToken, address _baseToken, address _implementation)
+    function _createPosition(address _onBehalfOf, address _quoteToken, address _baseToken, address _implementation)
         internal returns (uint256 tokenId, address proxyAddress) 
     {
 
