@@ -15,7 +15,7 @@ import "src/implementations/Short_Quote_Odos_Zerolend.sol";
 import "src/implementations/Short_Base_Odos_Zerolend.sol";
 
 
-contract CoreDeployment is Script{
+contract CoreDeployment is Script {
 
     address OdosRouterAddress = 0x2d8879046f1559E53eb052E949e9544bCB72f414;
     address zeroLendAddress = 0x2f9bB73a8e98793e26Cb2F6C4ad037BDf1C6B269;
@@ -36,7 +36,7 @@ contract CoreDeployment is Script{
     function run() public {
 
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        address deployerPublicKey;
+        address deployerPublicKey = 0x205edf0f225457feCFA22e5774E7a4C9177d56A8;
 
         // set up protocol
         vm.startBroadcast(deployerPrivateKey);
