@@ -1,4 +1,4 @@
-FORK_URL=https://linea.decubate.com
+FORK_URL=https://linea-mainnet.infura.io/v3/53170927972f40d3850a6f0dd18a1324
 
 anvil --fork-url $FORK_URL --port 9001
 

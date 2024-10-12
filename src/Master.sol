@@ -115,7 +115,7 @@ contract Master {
 
         IFactory factory = IFactory(centralRegistry.core("FACTORY"));
 
-        (tokenId, proxyAddress) = factory.createProxy(msg.sender, _implementation, _quoteToken, _baseToken);
+        (tokenId, proxyAddress) = factory.createProxy(_onBehalfOf, _implementation, _quoteToken, _baseToken);
 
     
     }
