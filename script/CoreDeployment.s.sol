@@ -14,6 +14,7 @@ import "src/implementations/Long_Base_Odos_Zerolend_Refactor.sol";
 import "src/implementations/Short_Quote_Odos_Zerolend.sol";
 import "src/implementations/Short_Base_Odos_Zerolend.sol";
 
+// forge script script/CoreDeployment.s.sol:CoreDeployment --rpc-url https://linea-mainnet.infura.io/v3/53170927972f40d3850a6f0dd18a1324 --broadcast
 
 contract CoreDeployment is Script {
 
