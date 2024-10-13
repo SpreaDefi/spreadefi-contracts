@@ -215,7 +215,7 @@ contract Long_Base_Odos_Zerolend is StrategyTemplate, IFlashLoanSimpleReceiver {
             pool.repay(QUOTE_TOKEN, _flashLoanAmount, 2,address(this));
         }
 
-        (address baseAtokenAddress,) = _getReserveData(BASE_TOKEN);
+        // (address baseAtokenAddress,) = _getReserveData(BASE_TOKEN);
 
         // IERC20(baseAtokenAddress).safeIncreaseAllowance(poolAddress, _baseReductionAmount);
 
